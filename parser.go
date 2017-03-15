@@ -32,15 +32,8 @@ func getDays(n *html.Node, d chan<- Day) {
 // order recursively starting at n. Any Day found is published via d.
 func getDaysRecursive(n *html.Node, d chan<- Day) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_day") {
-		// Some days have another formatting. Handle the known cases
-		var date string
-		common := n.FirstChild.NextSibling
-		if common.FirstChild != nil {
-			date = common.FirstChild.NextSibling.FirstChild.Data
-		} else {
-			date = common.NextSibling.FirstChild.NextSibling.FirstChild.Data
-		}
-
+		nn := node{n}
+		date := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild().FirstChild.Data
 		// For some reason there is an additional space behind each date separator
 		date = strings.Replace(date, ". ", ".", -1)
 		d <- Day{date, []Stage{}, n}
@@ -72,7 +65,8 @@ func getStages(n *html.Node, s chan<- Stage) {
 // order recursively starting at n. Any Stage found is published via s.
 func getStagesRecursive(n *html.Node, s chan<- Stage) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_stage") {
-		name := n.FirstChild.NextSibling.FirstChild.NextSibling.FirstChild.Data
+		nn := node{n}
+		name := nn.firstNonEmptyChild().firstNonEmptyChild().nextNonEmptySibling().FirstChild.Data
 		s <- Stage{strings.Title(name), []Event{}, n}
 		return
 	}
@@ -101,7 +95,8 @@ func getEvents(n *html.Node, e chan<- Event) {
 // order recursively starting at n. Any Event found is published via e.
 func getEventsRecursive(n *html.Node, e chan<- Event) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "band_lineup") {
-		name := n.FirstChild.NextSibling.NextSibling.NextSibling.FirstChild.Data
+		nn := node{n}
+		name := nn.firstNonEmptyChild().nextNonEmptySibling().FirstChild.Data
 		e <- Event{strings.Title(name), n}
 		return
 	}
