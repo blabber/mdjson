@@ -80,6 +80,7 @@ func getStagesRecursive(n *html.Node, s chan<- Stage) {
 // event.
 type Event struct {
 	Label string
+	Url   string
 	node  *html.Node
 }
 
@@ -97,7 +98,8 @@ func getEventsRecursive(n *html.Node, e chan<- Event) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "band_lineup") {
 		nn := node{n}
 		name := nn.firstNonEmptyChild().nextNonEmptySibling().FirstChild.Data
-		e <- Event{strings.Title(name), n}
+		url := getAttributeValue(n.Attr, "href")
+		e <- Event{strings.Title(name), url, n}
 		return
 	}
 

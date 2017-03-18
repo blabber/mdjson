@@ -93,31 +93,37 @@ func TestGetStages(t *testing.T) {
 	}
 }
 
+type testEvent struct {
+	Label string
+	Url   string
+}
+
 func TestGetEvents(t *testing.T) {
-	expected := []string{
-		strings.Title("Tytus"),
-		strings.Title("Turbowarrior of steel"),
-		strings.Title("Amon Amarth"),
-		strings.Title("Katatonia"),
-		strings.Title("Kadavar"),
-		strings.Title("Doro"),
+	expected := []testEvent{
+		{strings.Title("Tytus"), "http://www.metaldays.net/b613/tytus"},
+		{strings.Title("Turbowarrior of steel"), "http://www.metaldays.net/b612/turbowarrior-of-steel"},
+		{strings.Title("Amon Amarth"), "http://www.metaldays.net/b526/amon-amarth"},
+		{strings.Title("Katatonia"), "http://www.metaldays.net/b531/katatonia"},
+		{strings.Title("Kadavar"), "http://www.metaldays.net/b539/kadavar"},
+		{strings.Title("Doro"), "http://www.metaldays.net/b529/doro"},
 	}
 
-	is := []string{}
+	var is []testEvent
+
 	e := make(chan Event)
 	go getEvents(rootNode, e)
 	for event := range e {
-		is = append(is, event.Label)
+		is = append(is, testEvent{event.Label, event.Url})
 	}
 
-	for i, isLabel := range is {
+	for i, isEvent := range is {
 		if i >= len(expected) {
 			break
 		}
 
-		if isLabel != expected[i] {
-			t.Errorf("Unexpected label for event %d; is \"%s\"; expected \"%s\"",
-				i, isLabel, expected[i])
+		if isEvent != expected[i] {
+			t.Errorf("Unexpected event %d; is \"%v\"; expected \"%v\"",
+				i, isEvent, expected[i])
 		}
 	}
 
@@ -136,8 +142,16 @@ func TestParseRunningOrder(t *testing.T) {
 					{
 						strings.Title("Newforces stage"),
 						[]Event{
-							{strings.Title("Tytus"), nil},
-							{strings.Title("Turbowarrior of steel"), nil},
+							{
+								strings.Title("Tytus"),
+								"http://www.metaldays.net/b613/tytus",
+								nil,
+							},
+							{
+								strings.Title("Turbowarrior of steel"),
+								"http://www.metaldays.net/b612/turbowarrior-of-steel",
+								nil,
+							},
 						},
 						nil,
 					},
@@ -150,15 +164,27 @@ func TestParseRunningOrder(t *testing.T) {
 					{
 						strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
 						[]Event{
-							{strings.Title("Amon Amarth"), nil},
-							{strings.Title("Katatonia"), nil},
+							{
+								strings.Title("Amon Amarth"),
+								"http://www.metaldays.net/b526/amon-amarth",
+								nil,
+							},
+							{
+								strings.Title("Katatonia"),
+								"http://www.metaldays.net/b531/katatonia",
+								nil,
+							},
 						},
 						nil,
 					},
 					{
 						strings.Title("Boško Bursać Stage"),
 						[]Event{
-							{strings.Title("Kadavar"), nil},
+							{
+								strings.Title("Kadavar"),
+								"http://www.metaldays.net/b539/kadavar",
+								nil,
+							},
 						},
 						nil,
 					},
@@ -171,7 +197,11 @@ func TestParseRunningOrder(t *testing.T) {
 					{
 						strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
 						[]Event{
-							{strings.Title("Doro"), nil},
+							{
+								strings.Title("Doro"),
+								"http://www.metaldays.net/b529/doro",
+								nil,
+							},
 						},
 						nil,
 					},
@@ -228,10 +258,15 @@ func TestParseRunningOrder(t *testing.T) {
 				}
 
 				if event.Label != expected.Days[d].Stages[s].Events[e].Label {
-					t.Errorf("unexpected event %d; is \"%s\"; expected \"%s\"",
+					t.Errorf("unexpected label for event %d; is \"%s\"; expected \"%s\"",
 						e, event.Label,
 						expected.Days[d].Stages[s].Events[e].Label)
-					continue
+				}
+
+				if event.Url != expected.Days[d].Stages[s].Events[e].Url {
+					t.Errorf("unexpected url for event %d; is \"%s\"; expected \"%s\"",
+						e, event.Url,
+						expected.Days[d].Stages[s].Events[e].Url)
 				}
 			}
 		}
