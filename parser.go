@@ -35,7 +35,8 @@ func getDaysRecursive(n *html.Node, d chan<- Day) {
 		nn := node{n}
 		date := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild().FirstChild.Data
 		// For some reason there is an additional space behind each date separator
-		date = strings.Replace(date, ". ", ".", -1)
+		date = strings.TrimSpace(strings.Replace(date, ". ", ".", -1))
+
 		d <- Day{date, []Stage{}, n}
 		return
 	}
@@ -67,7 +68,9 @@ func getStagesRecursive(n *html.Node, s chan<- Stage) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_stage") {
 		nn := node{n}
 		name := nn.firstNonEmptyChild().firstNonEmptyChild().nextNonEmptySibling().FirstChild.Data
-		s <- Stage{strings.Title(name), []Event{}, n}
+		name = strings.TrimSpace(strings.Title(name))
+
+		s <- Stage{name, []Event{}, n}
 		return
 	}
 
@@ -98,8 +101,11 @@ func getEventsRecursive(n *html.Node, e chan<- Event) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "band_lineup") {
 		nn := node{n}
 		name := nn.firstNonEmptyChild().nextNonEmptySibling().FirstChild.Data
+		name = strings.TrimSpace(strings.Title(name))
+
 		url := getAttributeValue(n.Attr, "href")
-		e <- Event{strings.Title(name), url, n}
+
+		e <- Event{name, url, n}
 		return
 	}
 
