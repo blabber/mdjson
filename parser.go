@@ -127,9 +127,11 @@ func ParseRunningOrder(r io.Reader) (RunningOrder, error) {
 	for d := range ds {
 		ss := make(chan Stage)
 		go getStages(d.node, ss)
+
 		for s := range ss {
 			es := make(chan Event)
 			go getEvents(s.node, es)
+
 			for e := range es {
 				s.Events = append(s.Events, e)
 			}
