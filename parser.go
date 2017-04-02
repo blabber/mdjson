@@ -17,9 +17,10 @@ import (
 // A Day contains a label (ideally the date of the day), the stages that have
 // associated events for the day and the *html.Node representing the day.
 type Day struct {
-	Label  string
-	Stages []Stage
-	node   *html.Node
+	Label  string  `json:"label"`
+	Stages []Stage `json:"stages"`
+
+	node *html.Node
 }
 
 // getDays walks the running order starting at n and returns a slice of found
@@ -79,9 +80,10 @@ func getDaysRecursive(n *html.Node, d chan<- Day) {
 // A Stage contains a label (the name of the stage), the Events associated with
 // the stage and the *html.Node representing the stage.
 type Stage struct {
-	Label  string
-	Events []Event
-	node   *html.Node
+	Label  string  `json:"label"`
+	Events []Event `json:"events"`
+
+	node *html.Node
 }
 
 // getStages walks the running order starting at n and returns a slice of found
@@ -142,9 +144,10 @@ func getStagesRecursive(n *html.Node, s chan<- Stage) {
 // information about the event and the node representing the
 // event.
 type Event struct {
-	Label string
-	URL   string
-	node  *html.Node
+	Label string `json:"label"`
+	URL   string `json:"url"`
+
+	node *html.Node
 }
 
 // getEvents walks the running order starting at n and returns a slice of found
@@ -205,7 +208,7 @@ func getEventsRecursive(n *html.Node, e chan<- Event) {
 
 // A RunningOrder contains the Days of the event.
 type RunningOrder struct {
-	Days []Day
+	Days []Day `json:"days"`
 }
 
 // ParseRunningOrder parses the HTML running order in r and returns a fully

@@ -4,41 +4,54 @@
 // think this stuff is worth it, you can buy me a beer in return.
 //                                                             Tobias Rehbein
 
-//mdjson opens a HTTP server on port 8080 and serves a JSON representation of
-//the current MetalDays running order.
+// mdjson dumps a JSON representation of the latest MetalDays running order[1]
+// to os.Stdout.
+//
+// [1]: http://www.metaldays.net/Line_up
 package main
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/blabber/mdjson"
 )
 
 const (
-	URL = "http://www.metaldays.net/Line_up"
+	// runningOrderURL is the string representation of the URL where the
+	// latest running order can be found.
+	runningOrderURL = "http://www.metaldays.net/Line_up"
 )
 
 func main() {
-	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
-		resp, err := http.Get(URL)
-		if err != nil {
-			panic(err)
-		}
-		defer resp.Body.Close()
+	err := writeRunningOrder(runningOrderURL, os.Stdout)
+	if err != nil {
+		log.Print(err)
+	}
+}
 
-		ro, err := mdjson.ParseRunningOrder(resp.Body)
-		if err != nil {
-			panic(err)
-		}
+// writeRunningOrder parses the latest running order found at URL u and writes a
+// JSON representation to w.
+func writeRunningOrder(u string, w io.Writer) error {
+	resp, err := http.Get(u)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-		enc := json.NewEncoder(w)
-		err = enc.Encode(ro)
-		if err != nil {
-			panic(err)
-		}
-	})
+	ro, err := mdjson.ParseRunningOrder(resp.Body)
+	if err != nil {
+		return err
+	}
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	enc := json.NewEncoder(w)
+	err = enc.Encode(ro)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
