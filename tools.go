@@ -46,10 +46,20 @@ func getAttributeValue(a []html.Attribute, k string) string {
 	return ""
 }
 
-// node embeds an *html.Node and adds some convenience functions that are more
+// A node embeds an *html.Node and adds some convenience functions that are more
 // robust against formatting changes in the HTML source.
 type node struct {
 	*html.Node
+}
+
+// NewNode creates and initializes a new *node embedding n. If n is nil, the new
+// *node will also be nil.
+func newNode(n *html.Node) *node {
+	if n == nil {
+		return nil
+	}
+
+	return &node{n}
 }
 
 // firstNonEmptyChild returns the first non empty child of n. "Non empty" means

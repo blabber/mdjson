@@ -61,3 +61,50 @@ func TestGetAttributeValue(t *testing.T) {
 		}
 	}
 }
+
+func TestNewNodeNil(t *testing.T) {
+	n := newNode(nil)
+
+	if n != nil {
+		t.Errorf("newNode(nil) returns not nil: %v", n)
+	}
+}
+
+func TestNewNodeNotNil(t *testing.T) {
+	hn := &html.Node{}
+	n := newNode(hn)
+
+	if n.Node != hn {
+		t.Errorf("unexpected inner node; expected %v; is %v", hn, n.Node)
+	}
+}
+
+func TestNilNodeFirstNonEmptyChild(t *testing.T) {
+	defer func() {
+		p := recover()
+		if p != nil {
+			t.Errorf("panic in TestNilNodeFirstNonEmptyChild: %v", p)
+		}
+	}()
+
+	n := newNode(nil)
+
+	if is := n.firstNonEmptyChild(); is != nil {
+		t.Error("firstNonEmptyChild() on nil node is not returning nil")
+	}
+}
+
+func TestNilNodeNextNonEmptySibling(t *testing.T) {
+	defer func() {
+		p := recover()
+		if p != nil {
+			t.Errorf("panic in TestNilNodeNextNonEmptySibling: %v", p)
+		}
+	}()
+
+	n := newNode(nil)
+
+	if is := n.nextNonEmptySibling(); is != nil {
+		t.Error("nextNonEmptySibling() on nil node is not returning nil")
+	}
+}

@@ -30,6 +30,27 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestGetDaysNil(t *testing.T) {
+	_, err := getDays(nil)
+	if err == nil {
+		t.Error("getDays(nil) returns no error")
+	}
+}
+
+func TestGetStagesNil(t *testing.T) {
+	_, err := getStages(nil)
+	if err == nil {
+		t.Error("getStages(nil) returns no error")
+	}
+}
+
+func TestGetEventsNil(t *testing.T) {
+	_, err := getEvents(nil)
+	if err == nil {
+		t.Error("getEvents(nil) returns no error")
+	}
+}
+
 func TestGetDays(t *testing.T) {
 	expected := []string{
 		"Saturday 22.07.",
@@ -37,19 +58,17 @@ func TestGetDays(t *testing.T) {
 		"Wednesday 26.07.",
 	}
 
-	is := []string{}
-	d := make(chan Day)
-	go getDays(rootNode, d)
-	for day := range d {
-		is = append(is, day.Label)
+	is, err := getDays(rootNode)
+	if err != nil {
+		t.Fatalf("getDays returned an unexpected error: %v", err)
 	}
 
-	for i, isLabel := range is {
+	for i, isDay := range is {
 		if i >= len(expected) {
 			break
 		}
 
-		if isLabel != expected[i] {
+		if isLabel := isDay.Label; isLabel != expected[i] {
 			t.Errorf("Unexpected label for day %d; is \"%s\"; expected \"%s\"",
 				i, isLabel, expected[i])
 		}
@@ -69,19 +88,17 @@ func TestGetStages(t *testing.T) {
 		strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
 	}
 
-	is := []string{}
-	s := make(chan Stage)
-	go getStages(rootNode, s)
-	for stage := range s {
-		is = append(is, stage.Label)
+	is, err := getStages(rootNode)
+	if err != nil {
+		t.Fatalf("getStages returned an unexpected error: %v", err)
 	}
 
-	for i, isLabel := range is {
+	for i, isStage := range is {
 		if i >= len(expected) {
 			break
 		}
 
-		if isLabel != expected[i] {
+		if isLabel := isStage.Label; isLabel != expected[i] {
 			t.Errorf("Unexpected label for stage %d; is \"%s\"; expected \"%s\"",
 				i, isLabel, expected[i])
 		}
@@ -95,7 +112,7 @@ func TestGetStages(t *testing.T) {
 
 type testEvent struct {
 	Label string
-	Url   string
+	URL   string
 }
 
 func TestGetEvents(t *testing.T) {
@@ -108,12 +125,9 @@ func TestGetEvents(t *testing.T) {
 		{strings.Title("Doro"), "http://www.metaldays.net/b529/doro"},
 	}
 
-	var is []testEvent
-
-	e := make(chan Event)
-	go getEvents(rootNode, e)
-	for event := range e {
-		is = append(is, testEvent{event.Label, event.Url})
+	is, err := getEvents(rootNode)
+	if err != nil {
+		t.Fatalf("getStages returned an unexpected error: %v", err)
 	}
 
 	for i, isEvent := range is {
@@ -121,9 +135,11 @@ func TestGetEvents(t *testing.T) {
 			break
 		}
 
-		if isEvent != expected[i] {
+		isTestEvent := testEvent{isEvent.Label, isEvent.URL}
+
+		if isTestEvent != expected[i] {
 			t.Errorf("Unexpected event %d; is \"%v\"; expected \"%v\"",
-				i, isEvent, expected[i])
+				i, isEvent, isTestEvent)
 		}
 	}
 
@@ -217,6 +233,9 @@ func TestParseRunningOrder(t *testing.T) {
 	}
 
 	ro, err := ParseRunningOrder(f)
+	if err != nil {
+		t.Fatalf("ParseRunningOrder returns unexpected error: %v", err)
+	}
 
 	if len(ro.Days) != len(expected.Days) {
 		t.Errorf("unexpected number of days; is %d; expected %d",
@@ -263,10 +282,10 @@ func TestParseRunningOrder(t *testing.T) {
 						expected.Days[d].Stages[s].Events[e].Label)
 				}
 
-				if event.Url != expected.Days[d].Stages[s].Events[e].Url {
+				if event.URL != expected.Days[d].Stages[s].Events[e].URL {
 					t.Errorf("unexpected url for event %d; is \"%s\"; expected \"%s\"",
-						e, event.Url,
-						expected.Days[d].Stages[s].Events[e].Url)
+						e, event.URL,
+						expected.Days[d].Stages[s].Events[e].URL)
 				}
 			}
 		}

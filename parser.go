@@ -7,6 +7,7 @@
 package mdjson
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -21,21 +22,50 @@ type Day struct {
 	node   *html.Node
 }
 
-// getDays walks the running order starting at n and sends any Day found via d.
-// d is closed once GetDays has finished its job.
-func getDays(n *html.Node, d chan<- Day) {
-	getDaysRecursive(n, d)
-	close(d)
+// getDays walks the running order starting at n and returns a slice of found
+// Days.
+func getDays(n *html.Node) ([]Day, error) {
+	d := make(chan Day)
+	e := make(chan error)
+	done := make(chan bool)
+
+	go func() {
+		defer func() {
+			if p := recover(); p != nil {
+				e <- fmt.Errorf("%v", p)
+			}
+		}()
+
+		getDaysRecursive(n, d)
+		done <- true
+	}()
+
+	days := []Day{}
+	for {
+		select {
+		case dd := <-d:
+			days = append(days, dd)
+		case err := <-e:
+			return []Day{}, err
+		case <-done:
+			return days, nil
+		}
+	}
 }
 
 // getDaysRecursive is used by GetDays (and by itself) to walk the running
 // order recursively starting at n. Any Day found is published via d.
 func getDaysRecursive(n *html.Node, d chan<- Day) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_day") {
-		nn := node{n}
-		date := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild().FirstChild.Data
+		nn := newNode(n)
+		datenode := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild().firstNonEmptyChild()
+		if datenode == nil {
+			panic("Unable to parse running order structure (day).")
+		}
+
 		// For some reason there is an additional space behind each date separator
-		date = strings.TrimSpace(strings.Replace(date, ". ", ".", -1))
+		date := strings.Replace(datenode.Data, ". ", ".", -1)
+		date = strings.TrimSpace(date)
 
 		d <- Day{date, []Stage{}, n}
 		return
@@ -46,7 +76,7 @@ func getDaysRecursive(n *html.Node, d chan<- Day) {
 	}
 }
 
-// A Stage contains a label (the name of the stage), the events associated with
+// A Stage contains a label (the name of the stage), the Events associated with
 // the stage and the *html.Node representing the stage.
 type Stage struct {
 	Label  string
@@ -54,21 +84,50 @@ type Stage struct {
 	node   *html.Node
 }
 
-// getStages walks the running order starting at n and sends any Stage found
-// via s. s is closed once GetStages has finished its job. In order to get the
-// stages for one day, n should be the node associated with a Day.
-func getStages(n *html.Node, s chan<- Stage) {
-	getStagesRecursive(n, s)
-	close(s)
+// getStages walks the running order starting at n and returns a slice of found
+// Stages. In order to get the stages for one day, n should be the node
+// associated with a Day.
+func getStages(n *html.Node) ([]Stage, error) {
+	s := make(chan Stage)
+	e := make(chan error)
+	done := make(chan bool)
+
+	go func() {
+		defer func() {
+			if p := recover(); p != nil {
+				e <- fmt.Errorf("%v", p)
+			}
+		}()
+
+		getStagesRecursive(n, s)
+		done <- true
+	}()
+
+	stages := []Stage{}
+	for {
+		select {
+		case ss := <-s:
+			stages = append(stages, ss)
+		case err := <-e:
+			return []Stage{}, err
+		case <-done:
+			return stages, nil
+		}
+	}
 }
 
 // getStagesRecursive is used by GetStages (and by itself) to walk the running
 // order recursively starting at n. Any Stage found is published via s.
 func getStagesRecursive(n *html.Node, s chan<- Stage) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_stage") {
-		nn := node{n}
-		name := nn.firstNonEmptyChild().firstNonEmptyChild().nextNonEmptySibling().FirstChild.Data
-		name = strings.TrimSpace(strings.Title(name))
+		nn := newNode(n)
+		namenode := nn.firstNonEmptyChild().firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild()
+		if namenode == nil {
+			panic("Unable to parse running order structure (stage).")
+		}
+
+		name := strings.TrimSpace(namenode.Data)
+		name = strings.Title(name)
 
 		s <- Stage{name, []Event{}, n}
 		return
@@ -79,29 +138,59 @@ func getStagesRecursive(n *html.Node, s chan<- Stage) {
 	}
 }
 
-// A event contains a Label (the band playing) and the node representing the
+// A Event contains a Label (the band playing), a URL that points to further
+// information about the event and the node representing the
 // event.
 type Event struct {
 	Label string
-	Url   string
+	URL   string
 	node  *html.Node
 }
 
-// getEvents walks the running order starting at n and sends any Event found
-// via e. e is closed once GetEvents has finished its job. In order to get the
-// events for one stage, n should be the node associated with a Stage.
-func getEvents(n *html.Node, e chan<- Event) {
-	getEventsRecursive(n, e)
-	close(e)
+// getEvents walks the running order starting at n and returns a slice of found
+// Events. In order to get the events for one stage, n should be the node
+// associated with a Stage.
+func getEvents(n *html.Node) ([]Event, error) {
+	ev := make(chan Event)
+	e := make(chan error)
+	done := make(chan bool)
+
+	go func() {
+		defer func() {
+			if p := recover(); p != nil {
+				e <- fmt.Errorf("%v", p)
+			}
+		}()
+
+		getEventsRecursive(n, ev)
+		done <- true
+	}()
+
+	events := []Event{}
+	for {
+		select {
+		case ee := <-ev:
+			events = append(events, ee)
+		case err := <-e:
+			return []Event{}, err
+		case <-done:
+			return events, nil
+		}
+	}
 }
 
 // getEventsRecursive is used by GetEvents (and by itself) to walk the running
 // order recursively starting at n. Any Event found is published via e.
 func getEventsRecursive(n *html.Node, e chan<- Event) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "band_lineup") {
-		nn := node{n}
-		name := nn.firstNonEmptyChild().nextNonEmptySibling().FirstChild.Data
-		name = strings.TrimSpace(strings.Title(name))
+		nn := newNode(n)
+		namenode := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild()
+		if namenode == nil {
+			panic("Unable to parse running order structure (event).")
+		}
+
+		name := strings.TrimSpace(namenode.Data)
+		name = strings.Title(name)
 
 		url := getAttributeValue(n.Attr, "href")
 
@@ -122,27 +211,31 @@ type RunningOrder struct {
 // ParseRunningOrder parses the HTML running order in r and returns a fully
 // populated RunningOrder.
 func ParseRunningOrder(r io.Reader) (RunningOrder, error) {
-	ro := RunningOrder{}
-
 	n, err := html.Parse(r)
 	if err != nil {
-		return ro, err
+		return RunningOrder{}, err
 	}
 
-	ds := make(chan Day)
-	go getDays(n, ds)
+	ro := RunningOrder{}
 
-	for d := range ds {
-		ss := make(chan Stage)
-		go getStages(d.node, ss)
+	ds, err := getDays(n)
+	if err != nil {
+		return RunningOrder{}, err
+	}
 
-		for s := range ss {
-			es := make(chan Event)
-			go getEvents(s.node, es)
+	for _, d := range ds {
+		ss, err := getStages(d.node)
+		if err != nil {
+			return RunningOrder{}, nil
+		}
 
-			for e := range es {
-				s.Events = append(s.Events, e)
+		for _, s := range ss {
+			es, err := getEvents(s.node)
+			if err != nil {
+				return RunningOrder{}, nil
 			}
+
+			s.Events = append(s.Events, es...)
 
 			d.Stages = append(d.Stages, s)
 		}
