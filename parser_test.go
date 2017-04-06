@@ -14,15 +14,20 @@ import (
 	"golang.org/x/net/html"
 )
 
-var rootNode *html.Node
+var (
+	failRootNode,
+	sampleRootNode *html.Node
+)
 
 func TestMain(m *testing.M) {
-	f, err := os.Open("./testdata/sample.html")
+	var err error
+
+	failRootNode, err = htmlParseFile("./testdata/fail.html")
 	if err != nil {
 		panic(err)
 	}
 
-	rootNode, err = html.Parse(f)
+	sampleRootNode, err = htmlParseFile("./testdata/sample.html")
 	if err != nil {
 		panic(err)
 	}
@@ -30,22 +35,36 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestGetDaysNil(t *testing.T) {
-	_, err := getDays(nil)
+func htmlParseFile(s string) (*html.Node, error) {
+	f, err := os.Open(s)
+	if err != nil {
+		return nil, err
+	}
+
+	n, err := html.Parse(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
+}
+
+func TestGetDaysEmpty(t *testing.T) {
+	_, err := getDays(failRootNode)
 	if err == nil {
 		t.Error("getDays(nil) returns no error")
 	}
 }
 
-func TestGetStagesNil(t *testing.T) {
-	_, err := getStages(nil)
+func TestGetStagesEmpty(t *testing.T) {
+	_, err := getStages(failRootNode)
 	if err == nil {
 		t.Error("getStages(nil) returns no error")
 	}
 }
 
-func TestGetEventsNil(t *testing.T) {
-	_, err := getEvents(nil)
+func TestGetEventsEmpty(t *testing.T) {
+	_, err := getEvents(failRootNode)
 	if err == nil {
 		t.Error("getEvents(nil) returns no error")
 	}
@@ -58,7 +77,7 @@ func TestGetDays(t *testing.T) {
 		"Wednesday 26.07.",
 	}
 
-	is, err := getDays(rootNode)
+	is, err := getDays(sampleRootNode)
 	if err != nil {
 		t.Fatalf("getDays returned an unexpected error: %v", err)
 	}
@@ -88,7 +107,7 @@ func TestGetStages(t *testing.T) {
 		strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
 	}
 
-	is, err := getStages(rootNode)
+	is, err := getStages(sampleRootNode)
 	if err != nil {
 		t.Fatalf("getStages returned an unexpected error: %v", err)
 	}
@@ -125,7 +144,7 @@ func TestGetEvents(t *testing.T) {
 		{strings.Title("Doro"), "http://www.metaldays.net/b529/doro"},
 	}
 
-	is, err := getEvents(rootNode)
+	is, err := getEvents(sampleRootNode)
 	if err != nil {
 		t.Fatalf("getStages returned an unexpected error: %v", err)
 	}

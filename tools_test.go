@@ -80,13 +80,6 @@ func TestNewNodeNotNil(t *testing.T) {
 }
 
 func TestNilNodeFirstNonEmptyChild(t *testing.T) {
-	defer func() {
-		p := recover()
-		if p != nil {
-			t.Errorf("panic in TestNilNodeFirstNonEmptyChild: %v", p)
-		}
-	}()
-
 	n := newNode(nil)
 
 	if is := n.firstNonEmptyChild(); is != nil {
@@ -95,13 +88,6 @@ func TestNilNodeFirstNonEmptyChild(t *testing.T) {
 }
 
 func TestNilNodeNextNonEmptySibling(t *testing.T) {
-	defer func() {
-		p := recover()
-		if p != nil {
-			t.Errorf("panic in TestNilNodeNextNonEmptySibling: %v", p)
-		}
-	}()
-
 	n := newNode(nil)
 
 	if is := n.nextNonEmptySibling(); is != nil {

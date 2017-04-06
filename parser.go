@@ -9,6 +9,7 @@ package mdjson
 import (
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -33,6 +34,10 @@ func getDays(n *html.Node) ([]Day, error) {
 	go func() {
 		defer func() {
 			if p := recover(); p != nil {
+				if _, ok := p.(runtime.Error); ok {
+					panic(p)
+				}
+
 				e <- fmt.Errorf("%v", p)
 			}
 		}()
@@ -97,6 +102,10 @@ func getStages(n *html.Node) ([]Stage, error) {
 	go func() {
 		defer func() {
 			if p := recover(); p != nil {
+				if _, ok := p.(runtime.Error); ok {
+					panic(p)
+				}
+
 				e <- fmt.Errorf("%v", p)
 			}
 		}()
@@ -161,6 +170,10 @@ func getEvents(n *html.Node) ([]Event, error) {
 	go func() {
 		defer func() {
 			if p := recover(); p != nil {
+				if _, ok := p.(runtime.Error); ok {
+					panic(p)
+				}
+
 				e <- fmt.Errorf("%v", p)
 			}
 		}()
