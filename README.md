@@ -1,5 +1,6 @@
 mdjson
 ======
+[![Build Status](https://travis-ci.org/blabber/mdjson.svg?branch=master)](https://travis-ci.org/blabber/mdjson)
 
 Scrapes the MetalDays website and exposes the latest Running Order as JSON.
 
