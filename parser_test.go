@@ -146,7 +146,7 @@ func TestGetEvents(t *testing.T) {
 
 	is, err := getEvents(sampleRootNode)
 	if err != nil {
-		t.Fatalf("getStages returned an unexpected error: %v", err)
+		t.Fatalf("getEvents returned an unexpected error: %v", err)
 	}
 
 	for i, isEvent := range is {
