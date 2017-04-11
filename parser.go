@@ -15,12 +15,16 @@ import (
 	"golang.org/x/net/html"
 )
 
-// A Day contains a label (ideally the date of the day), the stages that have
-// associated events for the day and the *html.Node representing the day.
+// A Day represents a day.
 type Day struct {
-	Label  string  `json:"label"`
+	// Label contains a string representation of the date, ideally the date.
+	Label string `json:"label"`
+
+	// Stages contains the stages that are active at this day.
 	Stages []Stage `json:"stages"`
 
+	// node is the *html.Node associated with the day. It is intended to be
+	// used as input to getStages.
 	node *html.Node
 }
 
@@ -69,7 +73,8 @@ func getDaysRecursive(n *html.Node, d chan<- Day) {
 			panic("Unable to parse running order structure (day).")
 		}
 
-		// For some reason there is an additional space behind each date separator
+		// For some reason there is an additional space behind each date
+		// separator
 		date := strings.Replace(datenode.Data, ". ", ".", -1)
 		date = strings.TrimSpace(date)
 
@@ -82,12 +87,16 @@ func getDaysRecursive(n *html.Node, d chan<- Day) {
 	}
 }
 
-// A Stage contains a label (the name of the stage), the Events associated with
-// the stage and the *html.Node representing the stage.
+// A Stage represents a stage.
 type Stage struct {
-	Label  string  `json:"label"`
+	// Label contains the name of the stage.
+	Label string `json:"label"`
+
+	// Events contains the events that will take on the stage.
 	Events []Event `json:"events"`
 
+	// node is the *html.Node associated with the stage. It is intended to
+	// be used as input for getEvents.
 	node *html.Node
 }
 
@@ -149,13 +158,17 @@ func getStagesRecursive(n *html.Node, s chan<- Stage) {
 	}
 }
 
-// A Event contains a Label (the band playing), a URL that points to further
-// information about the event and the node representing the
-// event.
+// A Event represents an event.
 type Event struct {
+	// Label contains the name of the event, normally the name of a band.
 	Label string `json:"label"`
-	URL   string `json:"url"`
 
+	// URL contains a string representation of an URL that points to
+	// additional information about the event.
+	URL string `json:"url"`
+
+	// node contains the *html.Node associated with the event. It is
+	// currently unused.
 	node *html.Node
 }
 
