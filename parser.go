@@ -15,6 +15,24 @@ import (
 	"golang.org/x/net/html"
 )
 
+// protect calls f and recovers any panics (that are not caused by
+// runtime.Errors) and sends corresponding errors via err. When f has finished a
+// single true is send via done.
+func protect(err chan<- error, done chan<- bool, f func()) {
+	defer func() {
+		if p := recover(); p != nil {
+			if _, ok := p.(runtime.Error); ok {
+				panic(p)
+			}
+
+			err <- fmt.Errorf("%v", p)
+		}
+	}()
+
+	f()
+	done <- true
+}
+
 // A Day represents a day.
 type Day struct {
 	// Label contains a string representation of the date, ideally the date.
@@ -35,20 +53,9 @@ func getDays(n *html.Node) ([]Day, error) {
 	e := make(chan error)
 	done := make(chan bool)
 
-	go func() {
-		defer func() {
-			if p := recover(); p != nil {
-				if _, ok := p.(runtime.Error); ok {
-					panic(p)
-				}
-
-				e <- fmt.Errorf("%v", p)
-			}
-		}()
-
+	go protect(e, done, func() {
 		getDaysRecursive(n, d)
-		done <- true
-	}()
+	})
 
 	days := []Day{}
 	for {
@@ -108,20 +115,9 @@ func getStages(n *html.Node) ([]Stage, error) {
 	e := make(chan error)
 	done := make(chan bool)
 
-	go func() {
-		defer func() {
-			if p := recover(); p != nil {
-				if _, ok := p.(runtime.Error); ok {
-					panic(p)
-				}
-
-				e <- fmt.Errorf("%v", p)
-			}
-		}()
-
+	go protect(e, done, func() {
 		getStagesRecursive(n, s)
-		done <- true
-	}()
+	})
 
 	stages := []Stage{}
 	for {
@@ -180,20 +176,9 @@ func getEvents(n *html.Node) ([]Event, error) {
 	e := make(chan error)
 	done := make(chan bool)
 
-	go func() {
-		defer func() {
-			if p := recover(); p != nil {
-				if _, ok := p.(runtime.Error); ok {
-					panic(p)
-				}
-
-				e <- fmt.Errorf("%v", p)
-			}
-		}()
-
+	go protect(e, done, func() {
 		getEventsRecursive(n, ev)
-		done <- true
-	}()
+	})
 
 	events := []Event{}
 	for {
