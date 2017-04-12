@@ -8,6 +8,7 @@ package mdjson
 
 import (
 	"testing"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -92,5 +93,47 @@ func TestNilNodeNextNonEmptySibling(t *testing.T) {
 
 	if is := n.nextNonEmptySibling(); is != nil {
 		t.Error("nextNonEmptySibling() on nil node is not returning nil")
+	}
+}
+
+func TestProtectDone(t *testing.T) {
+	done := make(chan bool)
+	e := make(chan error)
+
+	funcCalled := false
+
+	go protect(e, done, func() {
+		funcCalled = true
+	})
+
+	select {
+	case <-done:
+		break
+	case err := <-e:
+		t.Fatalf("unexpected error: %v", err)
+	case <-time.After(time.Second):
+		t.Fatal("timeout")
+	}
+
+	if !funcCalled {
+		t.Error("protect did not call wrapped function")
+	}
+}
+
+func TestProtectError(t *testing.T) {
+	done := make(chan bool)
+	e := make(chan error)
+
+	go protect(e, done, func() {
+		panic("Testpanic")
+	})
+
+	select {
+	case <-done:
+		t.Fatal("unexpected success")
+	case <-e:
+		break
+	case <-time.After(time.Second):
+		t.Fatal("timeout")
 	}
 }

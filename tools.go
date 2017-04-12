@@ -7,10 +7,30 @@
 package mdjson
 
 import (
+	"fmt"
+	"runtime"
 	"strings"
 
 	"golang.org/x/net/html"
 )
+
+// protect calls f and recovers any panics (that are not caused by
+// runtime.Errors) and sends corresponding errors via err. When f has finished a
+// single true is send via done.
+func protect(err chan<- error, done chan<- bool, f func()) {
+	defer func() {
+		if p := recover(); p != nil {
+			if _, ok := p.(runtime.Error); ok {
+				panic(p)
+			}
+
+			err <- fmt.Errorf("%v", p)
+		}
+	}()
+
+	f()
+	done <- true
+}
 
 // hasAttributes returns true if the html.Attributes in a contain an attribute
 // with key k and a value of v.  If the attribute contains multiple value it is
