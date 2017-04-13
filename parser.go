@@ -19,7 +19,7 @@ type Day struct {
 	Label string `json:"label"`
 
 	// Stages contains the stages that are active at this day.
-	Stages []Stage `json:"stages"`
+	Stages []*Stage `json:"stages"`
 
 	// node is the *html.Node associated with the day. It is intended to be
 	// used as input to getStages.
@@ -28,8 +28,8 @@ type Day struct {
 
 // getDays walks the running order starting at n and returns a slice of found
 // Days.
-func getDays(n *html.Node) ([]Day, error) {
-	d := make(chan Day)
+func getDays(n *html.Node) ([]*Day, error) {
+	d := make(chan *Day)
 	e := make(chan error)
 	done := make(chan bool)
 
@@ -37,13 +37,13 @@ func getDays(n *html.Node) ([]Day, error) {
 		getDaysRecursive(n, d)
 	})
 
-	days := []Day{}
+	days := []*Day{}
 	for {
 		select {
 		case dd := <-d:
 			days = append(days, dd)
 		case err := <-e:
-			return []Day{}, err
+			return nil, err
 		case <-done:
 			return days, nil
 		}
@@ -52,7 +52,7 @@ func getDays(n *html.Node) ([]Day, error) {
 
 // getDaysRecursive is used by GetDays (and by itself) to walk the running
 // order recursively starting at n. Any Day found is published via d.
-func getDaysRecursive(n *html.Node, d chan<- Day) {
+func getDaysRecursive(n *html.Node, d chan<- *Day) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_day") {
 		nn := newNode(n)
 		datenode := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild().firstNonEmptyChild()
@@ -65,7 +65,7 @@ func getDaysRecursive(n *html.Node, d chan<- Day) {
 		date := strings.Replace(datenode.Data, ". ", ".", -1)
 		date = strings.TrimSpace(date)
 
-		d <- Day{date, []Stage{}, n}
+		d <- &Day{date, []*Stage{}, n}
 		return
 	}
 
@@ -80,7 +80,7 @@ type Stage struct {
 	Label string `json:"label"`
 
 	// Events contains the events that will take on the stage.
-	Events []Event `json:"events"`
+	Events []*Event `json:"events"`
 
 	// node is the *html.Node associated with the stage. It is intended to
 	// be used as input for getEvents.
@@ -90,8 +90,8 @@ type Stage struct {
 // getStages walks the running order starting at n and returns a slice of found
 // Stages. In order to get the stages for one day, n should be the node
 // associated with a Day.
-func getStages(n *html.Node) ([]Stage, error) {
-	s := make(chan Stage)
+func getStages(n *html.Node) ([]*Stage, error) {
+	s := make(chan *Stage)
 	e := make(chan error)
 	done := make(chan bool)
 
@@ -99,13 +99,13 @@ func getStages(n *html.Node) ([]Stage, error) {
 		getStagesRecursive(n, s)
 	})
 
-	stages := []Stage{}
+	stages := []*Stage{}
 	for {
 		select {
 		case ss := <-s:
 			stages = append(stages, ss)
 		case err := <-e:
-			return []Stage{}, err
+			return nil, err
 		case <-done:
 			return stages, nil
 		}
@@ -114,7 +114,7 @@ func getStages(n *html.Node) ([]Stage, error) {
 
 // getStagesRecursive is used by GetStages (and by itself) to walk the running
 // order recursively starting at n. Any Stage found is published via s.
-func getStagesRecursive(n *html.Node, s chan<- Stage) {
+func getStagesRecursive(n *html.Node, s chan<- *Stage) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_stage") {
 		nn := newNode(n)
 		namenode := nn.firstNonEmptyChild().firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild()
@@ -125,7 +125,7 @@ func getStagesRecursive(n *html.Node, s chan<- Stage) {
 		name := strings.TrimSpace(namenode.Data)
 		name = strings.Title(name)
 
-		s <- Stage{name, []Event{}, n}
+		s <- &Stage{name, []*Event{}, n}
 		return
 	}
 
@@ -147,8 +147,8 @@ type Event struct {
 // getEvents walks the running order starting at n and returns a slice of found
 // Events. In order to get the events for one stage, n should be the node
 // associated with a Stage.
-func getEvents(n *html.Node) ([]Event, error) {
-	ev := make(chan Event)
+func getEvents(n *html.Node) ([]*Event, error) {
+	ev := make(chan *Event)
 	e := make(chan error)
 	done := make(chan bool)
 
@@ -156,13 +156,13 @@ func getEvents(n *html.Node) ([]Event, error) {
 		getEventsRecursive(n, ev)
 	})
 
-	events := []Event{}
+	events := []*Event{}
 	for {
 		select {
 		case ee := <-ev:
 			events = append(events, ee)
 		case err := <-e:
-			return []Event{}, err
+			return nil, err
 		case <-done:
 			return events, nil
 		}
@@ -171,7 +171,7 @@ func getEvents(n *html.Node) ([]Event, error) {
 
 // getEventsRecursive is used by GetEvents (and by itself) to walk the running
 // order recursively starting at n. Any Event found is published via e.
-func getEventsRecursive(n *html.Node, e chan<- Event) {
+func getEventsRecursive(n *html.Node, e chan<- *Event) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "band_lineup") {
 		nn := newNode(n)
 		namenode := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild()
@@ -184,7 +184,7 @@ func getEventsRecursive(n *html.Node, e chan<- Event) {
 
 		url := getAttributeValue(n.Attr, "href")
 
-		e <- Event{name, url}
+		e <- &Event{name, url}
 		return
 	}
 
@@ -195,42 +195,36 @@ func getEventsRecursive(n *html.Node, e chan<- Event) {
 
 // A RunningOrder contains the Days of the event.
 type RunningOrder struct {
-	Days []Day `json:"days"`
+	Days []*Day `json:"days"`
 }
 
 // ParseRunningOrder parses the HTML running order in r and returns a fully
 // populated RunningOrder.
-func ParseRunningOrder(r io.Reader) (RunningOrder, error) {
+func ParseRunningOrder(r io.Reader) (*RunningOrder, error) {
 	n, err := html.Parse(r)
 	if err != nil {
-		return RunningOrder{}, err
+		return nil, err
 	}
 
-	ro := RunningOrder{}
+	ro := &RunningOrder{}
 
-	ds, err := getDays(n)
+	ro.Days, err = getDays(n)
 	if err != nil {
-		return RunningOrder{}, err
+		return nil, err
 	}
 
-	for _, d := range ds {
-		ss, err := getStages(d.node)
+	for _, d := range ro.Days {
+		d.Stages, err = getStages(d.node)
 		if err != nil {
-			return RunningOrder{}, nil
+			return nil, err
 		}
 
-		for _, s := range ss {
-			es, err := getEvents(s.node)
+		for _, s := range d.Stages {
+			s.Events, err = getEvents(s.node)
 			if err != nil {
-				return RunningOrder{}, nil
+				return nil, err
 			}
-
-			s.Events = append(s.Events, es...)
-
-			d.Stages = append(d.Stages, s)
 		}
-
-		ro.Days = append(ro.Days, d)
 	}
 
 	return ro, nil

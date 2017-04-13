@@ -170,13 +170,13 @@ func TestGetEvents(t *testing.T) {
 
 func TestParseRunningOrder(t *testing.T) {
 	expected := RunningOrder{
-		[]Day{
+		[]*Day{
 			{
 				"Saturday 22.07.",
-				[]Stage{
+				[]*Stage{
 					{
 						strings.Title("Newforces stage"),
-						[]Event{
+						[]*Event{
 							{
 								strings.Title("Tytus"),
 								"http://www.metaldays.net/b613/tytus",
@@ -193,10 +193,10 @@ func TestParseRunningOrder(t *testing.T) {
 			},
 			{
 				"Tuesday 25.07.",
-				[]Stage{
+				[]*Stage{
 					{
 						strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
-						[]Event{
+						[]*Event{
 							{
 								strings.Title("Amon Amarth"),
 								"http://www.metaldays.net/b526/amon-amarth",
@@ -210,7 +210,7 @@ func TestParseRunningOrder(t *testing.T) {
 					},
 					{
 						strings.Title("Boško Bursać Stage"),
-						[]Event{
+						[]*Event{
 							{
 								strings.Title("Kadavar"),
 								"http://www.metaldays.net/b539/kadavar",
@@ -223,10 +223,10 @@ func TestParseRunningOrder(t *testing.T) {
 			},
 			{
 				"Wednesday 26.07.",
-				[]Stage{
+				[]*Stage{
 					{
 						strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
-						[]Event{
+						[]*Event{
 							{
 								strings.Title("Doro"),
 								"http://www.metaldays.net/b529/doro",
