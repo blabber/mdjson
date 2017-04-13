@@ -180,12 +180,10 @@ func TestParseRunningOrder(t *testing.T) {
 							{
 								strings.Title("Tytus"),
 								"http://www.metaldays.net/b613/tytus",
-								nil,
 							},
 							{
 								strings.Title("Turbowarrior of steel"),
 								"http://www.metaldays.net/b612/turbowarrior-of-steel",
-								nil,
 							},
 						},
 						nil,
@@ -202,12 +200,10 @@ func TestParseRunningOrder(t *testing.T) {
 							{
 								strings.Title("Amon Amarth"),
 								"http://www.metaldays.net/b526/amon-amarth",
-								nil,
 							},
 							{
 								strings.Title("Katatonia"),
 								"http://www.metaldays.net/b531/katatonia",
-								nil,
 							},
 						},
 						nil,
@@ -218,7 +214,6 @@ func TestParseRunningOrder(t *testing.T) {
 							{
 								strings.Title("Kadavar"),
 								"http://www.metaldays.net/b539/kadavar",
-								nil,
 							},
 						},
 						nil,
@@ -235,7 +230,6 @@ func TestParseRunningOrder(t *testing.T) {
 							{
 								strings.Title("Doro"),
 								"http://www.metaldays.net/b529/doro",
-								nil,
 							},
 						},
 						nil,

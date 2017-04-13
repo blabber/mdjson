@@ -142,10 +142,6 @@ type Event struct {
 	// URL contains a string representation of an URL that points to
 	// additional information about the event.
 	URL string `json:"url"`
-
-	// node contains the *html.Node associated with the event. It is
-	// currently unused.
-	node *html.Node
 }
 
 // getEvents walks the running order starting at n and returns a slice of found
@@ -188,7 +184,7 @@ func getEventsRecursive(n *html.Node, e chan<- Event) {
 
 		url := getAttributeValue(n.Attr, "href")
 
-		e <- Event{name, url, n}
+		e <- Event{name, url}
 		return
 	}
 
