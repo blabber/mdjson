@@ -20,6 +20,9 @@
 //
 //	curl "http://localhost:8080/runningorder.json"
 //
+// You can tell the HTTP server to add a wildcard Access-Control-Allow-Origin
+// header to the replies by providing the -cors flag.
+//
 // [1]: http://www.metaldays.net/Line_up
 // [2]: https://labs.omniti.com/labs/jsend
 package main
@@ -35,21 +38,25 @@ import (
 	"github.com/blabber/mdjson"
 )
 
-const (
-	// runningOrderURL is the string representation of the URL where the
-	// latest running order can be found.
-	runningOrderURL = "http://www.metaldays.net/Line_up"
-)
-
-var (
-	httpAddr = flag.String("http", "", "HTTP service address")
-)
+type flags struct {
+	http *string
+	cors *bool
+}
 
 func main() {
+	// runningOrderURL is the string representation of the URL where the
+	// latest running order can be found.
+	const runningOrderURL = "http://www.metaldays.net/Line_up"
+
+	var flags = flags{
+		http: flag.String("http", "", "HTTP service address"),
+		cors: flag.Bool("cors", false, "add wildcard Access-Control-Allow-Origin header to HTTP replies"),
+	}
+
 	flag.Parse()
 
-	if len(*httpAddr) > 0 {
-		log.Fatal(serve(runningOrderURL, *httpAddr))
+	if len(*flags.http) > 0 {
+		log.Fatal(serve(runningOrderURL, flags))
 	}
 
 	err := dump(runningOrderURL)
@@ -110,14 +117,20 @@ func newJsendError(err error, code int) jsend {
 	}
 }
 
-// serve starts a HTTP server listening at address a. It serves a JSON
+// serve starts a HTTP server listening at address flags.http. It serves a JSON
 // representation of the latest running order found at URL u under path
 // "/runningorder.json".
-func serve(u, a string) error {
+//
+// If flags.cors is true, a wildcard Access-Control-Allow-Origin is added to the
+// response.
+func serve(u string, flags flags) error {
 	http.HandleFunc("/runningorder.json", func(w http.ResponseWriter, r *http.Request) {
 		log.Print("running order request received")
 
 		w.Header().Set("Content-Type", "application/json")
+		if *flags.cors {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
 
 		j, err := parseRunningOrder(u)
 		if err != nil {
@@ -132,7 +145,7 @@ func serve(u, a string) error {
 		}
 	})
 
-	return http.ListenAndServe(a, nil)
+	return http.ListenAndServe(*flags.http, nil)
 }
 
 // dump parses the latest running order found at URL u and writes a JSON
