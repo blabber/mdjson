@@ -4,10 +4,21 @@
 // think this stuff is worth it, you can buy me a beer in return.
 //                                                             Tobias Rehbein
 
-// mdjson dumps a JSON representation of the latest MetalDays running order[1]
-// to os.Stdout.
+// mdjson scrapes the latest MetalDays running order[1] and provides a JSON
+// representation of the running order. The JSON representation follows the
+// JSend specification[2].
 //
-// The JSON representation follows the JSend specification[2].
+// By default mdjson just dumps the running order to os.Stdout, but you can turn
+// it into a HTTP server by providing the -http flag. If you start mdjson as
+// follows
+//
+//	mdjson -http=":8080"
+//
+// you can access the running order on port 8080. The path under which the JSON
+// is served is "/runningorder.json". Using curl you can access the running
+// order by calling
+//
+//	curl "http://localhost:8080/runningorder.json"
 //
 // [1]: http://www.metaldays.net/Line_up
 // [2]: https://labs.omniti.com/labs/jsend
@@ -15,6 +26,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -29,14 +41,18 @@ const (
 	runningOrderURL = "http://www.metaldays.net/Line_up"
 )
 
+var (
+	httpAddr = flag.String("http", "", "HTTP service address")
+)
+
 func main() {
-	j, err := parseRunningOrder(runningOrderURL)
-	if err != nil {
-		log.Fatal(err)
+	flag.Parse()
+
+	if len(*httpAddr) > 0 {
+		log.Fatal(serve(runningOrderURL, *httpAddr))
 	}
 
-	enc := json.NewEncoder(os.Stdout)
-	err = enc.Encode(j)
+	err := dump(runningOrderURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,6 +110,48 @@ func newJsendError(err error, code int) jsend {
 	}
 }
 
+// serve starts a HTTP server listening at address a. It serves a JSON
+// representation of the latest running order found at URL u under path
+// "/runningorder.json".
+func serve(u, a string) error {
+	http.HandleFunc("/runningorder.json", func(w http.ResponseWriter, r *http.Request) {
+		log.Print("running order request received")
+
+		w.Header().Set("Content-Type", "application/json")
+
+		j, err := parseRunningOrder(u)
+		if err != nil {
+			log.Printf("parseRunningorder: %v", err)
+			w.WriteHeader(j.Code)
+		}
+
+		enc := json.NewEncoder(w)
+		err = enc.Encode(j)
+		if err != nil {
+			log.Printf("encode: %v", err)
+		}
+	})
+
+	return http.ListenAndServe(a, nil)
+}
+
+// dump parses the latest running order found at URL u and writes a JSON
+// representation to os.Stdout.
+func dump(u string) error {
+	j, err := parseRunningOrder(u)
+	if err != nil {
+		return err
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	err = enc.Encode(j)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // parseRunningOrder parses the latest running order found at URL u and returns
 // a jsend representation.
 //
@@ -107,7 +165,7 @@ func parseRunningOrder(u string) (jsend, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("%s returned %q", u, resp.Status)
+		err = fmt.Errorf("%s returned %q", u, resp.Status)
 		return newJsendError(err, http.StatusBadGateway), err
 	}
 
