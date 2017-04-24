@@ -31,6 +31,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -59,7 +60,7 @@ func main() {
 		log.Fatal(serve(runningOrderURL, flags))
 	}
 
-	err := dump(runningOrderURL)
+	err := dump(runningOrderURL, os.Stdout)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -149,14 +150,14 @@ func serve(u string, flags flags) error {
 }
 
 // dump parses the latest running order found at URL u and writes a JSON
-// representation to os.Stdout.
-func dump(u string) error {
+// representation to w.
+func dump(u string, w io.Writer) error {
 	j, err := parseRunningOrder(u)
 	if err != nil {
 		return err
 	}
 
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(w)
 	err = enc.Encode(j)
 	if err != nil {
 		return err
