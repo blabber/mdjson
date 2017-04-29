@@ -119,13 +119,21 @@ func newJsendError(err error, code int) jsend {
 }
 
 // serve starts a HTTP server listening at address flags.http. It serves a JSON
-// representation of the latest running order found at URL u under path
+// representation of the latest running order, found at URL u, under path
 // "/runningorder.json".
+func serve(u string, flags flags) error {
+	http.Handle("/runningorder.json", runningorderHandler(u, flags))
+
+	return http.ListenAndServe(*flags.http, nil)
+}
+
+// runningorderHandler returns a http.HandlerFunc that serves a JSON
+// representation of the latest running order found at URL u.
 //
 // If flags.cors is true, a wildcard Access-Control-Allow-Origin is added to the
 // response.
-func serve(u string, flags flags) error {
-	http.HandleFunc("/runningorder.json", func(w http.ResponseWriter, r *http.Request) {
+func runningorderHandler(u string, flags flags) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		log.Print("running order request received")
 
 		w.Header().Set("Content-Type", "application/json")
@@ -144,9 +152,7 @@ func serve(u string, flags flags) error {
 		if err != nil {
 			log.Printf("encode: %v", err)
 		}
-	})
-
-	return http.ListenAndServe(*flags.http, nil)
+	}
 }
 
 // dump parses the latest running order found at URL u and writes a JSON
