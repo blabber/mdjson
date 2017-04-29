@@ -77,7 +77,7 @@ func TestDumpInvalidData(t *testing.T) {
 		t.Error("expected error did not occur")
 	}
 	if err != nil && !strings.HasPrefix(err.Error(), "Unable to parse running order structure ") {
-		t.Errorf("Unexpected err; expected: \"Unable to parse running order structure...\"; is: %v", err)
+		t.Errorf("Unexpected error; expected: \"Unable to parse running order structure...\"; is: %v", err)
 	}
 }
 
@@ -95,6 +95,6 @@ func TestDumpRemoteError(t *testing.T) {
 	st := http.StatusText(c)
 	expectedSuffix := fmt.Sprintf(" returned \"%d %s\"", c, st)
 	if err != nil && !strings.HasSuffix(err.Error(), expectedSuffix) {
-		t.Errorf("Unexpected err; expected: '...returned %q'; is: %v", st, err)
+		t.Errorf("Unexpected error; expected: '...%s'; is: %v", expectedSuffix, err)
 	}
 }
