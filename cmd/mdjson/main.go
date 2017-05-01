@@ -158,15 +158,16 @@ func runningorderHandler(u string, flags flags) http.HandlerFunc {
 // dump parses the latest running order found at URL u and writes a JSON
 // representation to w.
 func dump(u string, w io.Writer) error {
-	j, err := parseRunningOrder(u)
+	j, parseErr := parseRunningOrder(u)
+
+	enc := json.NewEncoder(w)
+	err := enc.Encode(j)
 	if err != nil {
 		return err
 	}
 
-	enc := json.NewEncoder(w)
-	err = enc.Encode(j)
-	if err != nil {
-		return err
+	if parseErr != nil {
+		return parseErr
 	}
 
 	return nil
