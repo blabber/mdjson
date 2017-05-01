@@ -8,6 +8,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,7 +26,13 @@ const (
 
 	testdataInvalidHTML = "../../testdata/fail.html"
 	testdataInvalidJSON = "../../testdata/fail.json"
+
+	messagePrefixParseError = "Unable to parse running order structure "
 )
+
+func messageSuffixRemoteError(c int) string {
+	return fmt.Sprintf(" returned \"%d %s\"", c, http.StatusText(c))
+}
 
 func init() {
 	log.SetOutput(ioutil.Discard)
@@ -86,11 +93,14 @@ func TestDumpInvalidData(t *testing.T) {
 
 	var b bytes.Buffer
 	err = dump(s.URL, &b)
-	if err == nil {
+	if err != nil {
+		expectedPrefix := messagePrefixParseError
+		is := err.Error()
+		if err != nil && !strings.HasPrefix(is, expectedPrefix) {
+			t.Errorf("unexpected error; expected: %q; is: %q", expectedPrefix, is)
+		}
+	} else {
 		t.Error("expected error did not occur")
-	}
-	if err != nil && !strings.HasPrefix(err.Error(), "Unable to parse running order structure ") {
-		t.Errorf("Unexpected error; expected: \"Unable to parse running order structure...\"; is: %v", err)
 	}
 }
 
@@ -105,10 +115,10 @@ func TestDumpRemoteError(t *testing.T) {
 		t.Error("expected error did not occur")
 	}
 
-	st := http.StatusText(c)
-	expectedSuffix := fmt.Sprintf(" returned \"%d %s\"", c, st)
-	if err != nil && !strings.HasSuffix(err.Error(), expectedSuffix) {
-		t.Errorf("Unexpected error; expected: '...%s'; is: %v", expectedSuffix, err)
+	expectedSuffix := messageSuffixRemoteError(c)
+	is := err.Error()
+	if err != nil && !strings.HasSuffix(is, expectedSuffix) {
+		t.Errorf("unexpected error; expected: '...%s'; is: %s", expectedSuffix, is)
 	}
 }
 
@@ -203,5 +213,125 @@ func TestServeInvalidData(t *testing.T) {
 
 	if bytes.Compare([]byte(is), expected) != 0 {
 		t.Errorf("response contained unexpected data; expected: %q; is: %q", expected, is)
+	}
+}
+
+func TestServeRemoteError(t *testing.T) {
+	rc := 404
+	s := httptest.NewServer(codeHandler(rc))
+	s.Close()
+
+	rw := httptest.NewRecorder()
+	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := false
+	h := runningorderHandler(s.URL, flags{cors: &c})
+	h(rw, rr)
+
+	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "" {
+		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
+	}
+
+	r := rw.Result()
+
+	expectedCode := http.StatusBadGateway
+	isCode := r.StatusCode
+	if isCode != expectedCode {
+		t.Errorf("unexpected status; expected: %d; is: %d", expectedCode, isCode)
+	}
+
+	var js jsend
+	dec := json.NewDecoder(r.Body)
+	err = dec.Decode(&js)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	isStatus := js.Status
+	expectedStatus := "error"
+	if isStatus != expectedStatus {
+		t.Errorf("unexpected jsend.status; expected: %q; is: %q", expectedStatus, isStatus)
+	}
+
+	isCode = js.Code
+	if isCode != expectedCode {
+		t.Errorf("unexpected jsend.code; expected: %d; is: %d", expectedCode, isCode)
+	}
+
+	if len(js.Message) == 0 {
+		t.Error("Empty jsend.message")
+	}
+}
+
+func TestServeCorsValidData(t *testing.T) {
+	f, err := os.Open(testdataValidHTML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	s := httptest.NewServer(dataHandler(f))
+	defer s.Close()
+
+	rw := httptest.NewRecorder()
+	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := true
+	h := runningorderHandler(s.URL, flags{cors: &c})
+	h(rw, rr)
+
+	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "*" {
+		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
+	}
+}
+
+func TestServeCorsInvalidData(t *testing.T) {
+	f, err := os.Open(testdataInvalidHTML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	s := httptest.NewServer(dataHandler(f))
+	defer s.Close()
+
+	rw := httptest.NewRecorder()
+	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := true
+	h := runningorderHandler(s.URL, flags{cors: &c})
+	h(rw, rr)
+
+	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "*" {
+		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
+	}
+}
+
+func TestServeCorsRemoteError(t *testing.T) {
+	rc := 404
+	s := httptest.NewServer(codeHandler(rc))
+	s.Close()
+
+	rw := httptest.NewRecorder()
+	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := true
+	h := runningorderHandler(s.URL, flags{cors: &c})
+	h(rw, rr)
+
+	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "*" {
+		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
 	}
 }
