@@ -50,7 +50,10 @@ func dataHandler(dr io.Reader) http.HandlerFunc {
 func codeHandler(c int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(c)
-		w.Write([]byte(http.StatusText(c)))
+		_, err := w.Write([]byte(http.StatusText(c)))
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
