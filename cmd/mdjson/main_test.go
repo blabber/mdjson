@@ -54,284 +54,229 @@ func codeHandler(c int) http.HandlerFunc {
 	}
 }
 
-func TestDumpValidData(t *testing.T) {
-	f, err := os.Open(testdataValidHTML)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
+var dataTests = []struct {
+	name         string
+	inputData    string
+	expectedData string
+	validData    bool
+	cors         bool
+}{
+	{"valid_without_cors", testdataValidHTML, testdataValidJSON, true, false},
+	{"invalid_without_cors", testdataInvalidHTML, testdataInvalidJSON, false, false},
+	{"valid_with_cors", testdataValidHTML, testdataValidJSON, true, true},
+	{"invalid_with_cors", testdataInvalidHTML, testdataInvalidJSON, false, true},
+}
 
-	s := httptest.NewServer(dataHandler(f))
-	defer s.Close()
+func TestDumpData(t *testing.T) {
+	for _, dt := range dataTests {
+		t.Run(dt.name, func(t *testing.T) {
+			f, err := os.Open(dt.inputData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
 
-	var b bytes.Buffer
-	err = dump(s.URL, &b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	is := b.Bytes()
+			s := httptest.NewServer(dataHandler(f))
+			defer s.Close()
 
-	expected, err := ioutil.ReadFile(testdataValidJSON)
-	if err != nil {
-		t.Fatal(err)
-	}
+			var b bytes.Buffer
+			err = dump(s.URL, &b)
+			if err != nil {
+				if dt.validData {
+					t.Fatal(err)
+				} else {
+					expectedPrefix := messagePrefixParseError
+					is := err.Error()
+					if !strings.HasPrefix(is, expectedPrefix) {
+						t.Fatalf("unexpected error; expected: \"...%s\"; is: %q", expectedPrefix, is)
+					}
+				}
+			} else if !dt.validData {
+				t.Error("expected error did not occur")
+			}
+			is := b.Bytes()
 
-	if bytes.Compare(is, expected) != 0 {
-		t.Errorf("dump wrote unexpected data; expected: %q; is: %q", expected, is)
+			expected, err := ioutil.ReadFile(dt.expectedData)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !bytes.Equal(is, expected) {
+				t.Errorf("dump wrote unexpected data; expected: %q; is: %q", expected, is)
+			}
+		})
 	}
 }
 
-func TestDumpInvalidData(t *testing.T) {
-	f, err := os.Open(testdataInvalidHTML)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
+func TestServeData(t *testing.T) {
+	for _, dt := range dataTests {
+		t.Run(dt.name, func(t *testing.T) {
+			f, err := os.Open(dt.inputData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
 
-	s := httptest.NewServer(dataHandler(f))
-	defer s.Close()
+			s := httptest.NewServer(dataHandler(f))
+			defer s.Close()
 
-	var b bytes.Buffer
-	err = dump(s.URL, &b)
-	if err != nil {
-		expectedPrefix := messagePrefixParseError
-		is := err.Error()
-		if err != nil && !strings.HasPrefix(is, expectedPrefix) {
-			t.Errorf("unexpected error; expected: %q; is: %q", expectedPrefix, is)
-		}
-	} else {
-		t.Error("expected error did not occur")
+			rw := httptest.NewRecorder()
+			rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			h := runningorderHandler(s.URL, flags{cors: &dt.cors})
+			h(rw, rr)
+
+			isACAOHeader := rw.HeaderMap.Get("Access-Control-Allow-Origin")
+			expectedACAOHeader := ""
+			if dt.cors {
+				expectedACAOHeader = "*"
+			}
+			if isACAOHeader != expectedACAOHeader {
+				t.Errorf("unexpected Access-Control-Allow-Origin header; expected %q; is: %q", expectedACAOHeader, isACAOHeader)
+			}
+
+			r := rw.Result()
+
+			isCode := r.StatusCode
+			expectedCode := http.StatusOK
+			if !dt.validData {
+				expectedCode = http.StatusInternalServerError
+			}
+			if isCode != expectedCode {
+				t.Errorf("unexpected status; expected: %d; is: %d", expectedCode, isCode)
+			}
+
+			is, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			expected, err := ioutil.ReadFile(dt.expectedData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal([]byte(is), expected) {
+				t.Errorf("response contained unexpected data; expected: %q; is: %q", expected, is)
+			}
+		})
 	}
+}
+
+var remoteErrorTests = []struct {
+	name string
+	code int
+	cors bool
+}{
+	{"404_with_cors", 404, true},
+	{"404_without_cors", 404, false},
+	{"500_with_cors", 500, true},
+	{"500_without_cors", 500, false},
 }
 
 func TestDumpRemoteError(t *testing.T) {
-	c := 404
-	s := httptest.NewServer(codeHandler(c))
-	defer s.Close()
+	for _, ret := range remoteErrorTests {
+		t.Run(ret.name, func(t *testing.T) {
+			s := httptest.NewServer(codeHandler(ret.code))
+			defer s.Close()
 
-	var b bytes.Buffer
-	err := dump(s.URL, &b)
-	if err == nil {
-		t.Error("expected error did not occur")
-	}
+			var b bytes.Buffer
+			err := dump(s.URL, &b)
+			if err != nil {
+				expectedSuffix := messageSuffixRemoteError(ret.code)
+				is := err.Error()
+				if !strings.HasSuffix(is, expectedSuffix) {
+					t.Errorf("unexpected error; expected: '...%s'; is: %s", expectedSuffix, is)
+				}
+			} else {
+				t.Error("expected error did not occur")
+			}
 
-	expectedSuffix := messageSuffixRemoteError(c)
-	is := err.Error()
-	if err != nil && !strings.HasSuffix(is, expectedSuffix) {
-		t.Errorf("unexpected error; expected: '...%s'; is: %s", expectedSuffix, is)
-	}
-}
+			var js jsend
+			dec := json.NewDecoder(&b)
+			err = dec.Decode(&js)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-func TestServeValidData(t *testing.T) {
-	f, err := os.Open(testdataValidHTML)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
+			isStatus := js.Status
+			expectedStatus := "error"
+			if isStatus != expectedStatus {
+				t.Errorf("unexpected jsend.Status; expected: %q; is: %q", expectedStatus, isStatus)
+			}
 
-	s := httptest.NewServer(dataHandler(f))
-	defer s.Close()
+			expectedCode := http.StatusBadGateway
+			isCode := js.Code
+			if isCode != expectedCode {
+				t.Errorf("unexpected jsend.Code; expected: %d; is: %d", expectedCode, isCode)
+			}
 
-	rw := httptest.NewRecorder()
-	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	c := false
-	h := runningorderHandler(s.URL, flags{cors: &c})
-	h(rw, rr)
-
-	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "" {
-		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
-	}
-
-	r := rw.Result()
-
-	expectedCode := http.StatusOK
-	isCode := r.StatusCode
-	if isCode != expectedCode {
-		t.Errorf("unexpected status; expected: %d; is: %d", expectedCode, isCode)
-	}
-
-	is, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected, err := ioutil.ReadFile(testdataValidJSON)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if bytes.Compare([]byte(is), expected) != 0 {
-		t.Errorf("response contained unexpected data; expected: %q; is: %q", expected, is)
-	}
-}
-
-func TestServeInvalidData(t *testing.T) {
-	f, err := os.Open(testdataInvalidHTML)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-
-	s := httptest.NewServer(dataHandler(f))
-	defer s.Close()
-
-	rw := httptest.NewRecorder()
-	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	c := false
-	h := runningorderHandler(s.URL, flags{cors: &c})
-	h(rw, rr)
-
-	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "" {
-		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
-	}
-
-	r := rw.Result()
-
-	expectedCode := http.StatusInternalServerError
-	isCode := r.StatusCode
-	if isCode != expectedCode {
-		t.Errorf("unexpected status; expected: %d; is: %d", expectedCode, isCode)
-	}
-
-	is, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected, err := ioutil.ReadFile(testdataInvalidJSON)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if bytes.Compare([]byte(is), expected) != 0 {
-		t.Errorf("response contained unexpected data; expected: %q; is: %q", expected, is)
+			expectedSuffix := messageSuffixRemoteError(ret.code)
+			is := js.Message
+			if !strings.HasSuffix(is, expectedSuffix) {
+				t.Errorf("unexpected jsend.Message; expected: '...%s'; is: %s", expectedSuffix, is)
+			}
+		})
 	}
 }
 
 func TestServeRemoteError(t *testing.T) {
-	rc := 404
-	s := httptest.NewServer(codeHandler(rc))
-	s.Close()
+	for _, ret := range remoteErrorTests {
+		t.Run(ret.name, func(t *testing.T) {
+			s := httptest.NewServer(codeHandler(ret.code))
+			defer s.Close()
 
-	rw := httptest.NewRecorder()
-	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+			rw := httptest.NewRecorder()
+			rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	c := false
-	h := runningorderHandler(s.URL, flags{cors: &c})
-	h(rw, rr)
+			h := runningorderHandler(s.URL, flags{cors: &ret.cors})
+			h(rw, rr)
 
-	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "" {
-		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
-	}
+			isACAOHeader := rw.HeaderMap.Get("Access-Control-Allow-Origin")
+			expectedACAOHeader := ""
+			if ret.cors {
+				expectedACAOHeader = "*"
+			}
+			if isACAOHeader != expectedACAOHeader {
+				t.Errorf("unexpected Access-Control-Allow-Origin header; expected %q; is: %q", expectedACAOHeader, isACAOHeader)
+			}
 
-	r := rw.Result()
+			r := rw.Result()
 
-	expectedCode := http.StatusBadGateway
-	isCode := r.StatusCode
-	if isCode != expectedCode {
-		t.Errorf("unexpected status; expected: %d; is: %d", expectedCode, isCode)
-	}
+			expectedCode := http.StatusBadGateway
+			isCode := r.StatusCode
+			if isCode != expectedCode {
+				t.Errorf("unexpected status; expected: %d; is: %d", expectedCode, isCode)
+			}
 
-	var js jsend
-	dec := json.NewDecoder(r.Body)
-	err = dec.Decode(&js)
-	if err != nil {
-		t.Fatal(err)
-	}
+			var js jsend
+			dec := json.NewDecoder(r.Body)
+			err = dec.Decode(&js)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	isStatus := js.Status
-	expectedStatus := "error"
-	if isStatus != expectedStatus {
-		t.Errorf("unexpected jsend.status; expected: %q; is: %q", expectedStatus, isStatus)
-	}
+			isStatus := js.Status
+			expectedStatus := "error"
+			if isStatus != expectedStatus {
+				t.Errorf("unexpected jsend.Status; expected: %q; is: %q", expectedStatus, isStatus)
+			}
 
-	isCode = js.Code
-	if isCode != expectedCode {
-		t.Errorf("unexpected jsend.code; expected: %d; is: %d", expectedCode, isCode)
-	}
+			isCode = js.Code
+			if isCode != expectedCode {
+				t.Errorf("unexpected jsend.Code; expected: %d; is: %d", expectedCode, isCode)
+			}
 
-	if len(js.Message) == 0 {
-		t.Error("Empty jsend.message")
-	}
-}
-
-func TestServeCorsValidData(t *testing.T) {
-	f, err := os.Open(testdataValidHTML)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-
-	s := httptest.NewServer(dataHandler(f))
-	defer s.Close()
-
-	rw := httptest.NewRecorder()
-	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	c := true
-	h := runningorderHandler(s.URL, flags{cors: &c})
-	h(rw, rr)
-
-	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "*" {
-		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
-	}
-}
-
-func TestServeCorsInvalidData(t *testing.T) {
-	f, err := os.Open(testdataInvalidHTML)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-
-	s := httptest.NewServer(dataHandler(f))
-	defer s.Close()
-
-	rw := httptest.NewRecorder()
-	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	c := true
-	h := runningorderHandler(s.URL, flags{cors: &c})
-	h(rw, rr)
-
-	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "*" {
-		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
-	}
-}
-
-func TestServeCorsRemoteError(t *testing.T) {
-	rc := 404
-	s := httptest.NewServer(codeHandler(rc))
-	s.Close()
-
-	rw := httptest.NewRecorder()
-	rr, err := http.NewRequest("GET", "http://example.com/runningorder.json", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	c := true
-	h := runningorderHandler(s.URL, flags{cors: &c})
-	h(rw, rr)
-
-	if hv := rw.HeaderMap.Get("Access-Control-Allow-Origin"); hv != "*" {
-		t.Errorf("unexpected Access-Control-Allow-Origin header: %q", hv)
+			expectedSuffix := messageSuffixRemoteError(ret.code)
+			is := js.Message
+			if !strings.HasSuffix(is, expectedSuffix) {
+				t.Errorf("unexpected jsend.Message; expected: '...%s'; is: %s", expectedSuffix, is)
+			}
+		})
 	}
 }
