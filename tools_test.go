@@ -7,6 +7,7 @@
 package mdjson
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -35,11 +36,12 @@ func TestHasAttributeValue(t *testing.T) {
 	}
 
 	for _, test := range ts {
-		is := hasAttributeValue(testAttributes, test.key, test.value)
-		if is != test.expected {
-			t.Errorf("hasAttributeValue(testAttributes, \"%s\", \"%s\") returns %t; expected %t",
-				test.key, test.value, is, test.expected)
-		}
+		t.Run(fmt.Sprintf("%s_%s_%t", test.key, test.value, test.expected), func(t *testing.T) {
+			is := hasAttributeValue(testAttributes, test.key, test.value)
+			if is != test.expected {
+				t.Errorf("hasAttributeValue returned unexpected value; expected: %t; is %t", test.expected, is)
+			}
+		})
 	}
 }
 
@@ -55,11 +57,12 @@ func TestGetAttributeValue(t *testing.T) {
 	}
 
 	for _, test := range ts {
-		is := getAttributeValue(testAttributes, test.key)
-		if is != test.expected {
-			t.Errorf("getAttributeValue(testAttributes, \"%s\") returns \"%s\"; expected \"%s\"",
-				test.key, is, test.expected)
-		}
+		t.Run(fmt.Sprintf("%s_%s", test.key, test.expected), func(t *testing.T) {
+			is := getAttributeValue(testAttributes, test.key)
+			if is != test.expected {
+				t.Errorf("getAttributeValue returned unexpected value; expected: %q; is %q", test.expected, is)
+			}
+		})
 	}
 }
 
