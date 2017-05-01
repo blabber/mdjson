@@ -180,7 +180,7 @@ func dump(u string, w io.Writer) error {
 func parseRunningOrder(u string) (jsend, error) {
 	resp, err := http.Get(u)
 	if err != nil {
-		return newJsendError(err, http.StatusInternalServerError), err
+		return newJsendError(err, http.StatusBadGateway), err
 	}
 	defer resp.Body.Close()
 
