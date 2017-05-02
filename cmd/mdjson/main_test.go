@@ -103,7 +103,6 @@ func TestDumpData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-
 			if !bytes.Equal(is, expected) {
 				t.Errorf("dump wrote unexpected data; expected: %q; is: %q", expected, is)
 			}
@@ -204,7 +203,7 @@ func TestDumpRemoteError(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			checkFailedJsend(ret.code, js, t)
+			t.Run("check_jsend", checkFailedJsendSubtest(ret.code, js))
 		})
 	}
 }
@@ -248,27 +247,29 @@ func TestServeRemoteError(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			checkFailedJsend(ret.code, js, t)
+			t.Run("check_jsend", checkFailedJsendSubtest(ret.code, js))
 		})
 	}
 }
 
-func checkFailedJsend(c int, j jsend, t *testing.T) {
-	isStatus := j.Status
-	expectedStatus := "error"
-	if isStatus != expectedStatus {
-		t.Errorf("unexpected jsend.Status; expected: %q; is: %q", expectedStatus, isStatus)
-	}
+func checkFailedJsendSubtest(c int, j jsend) func(t *testing.T) {
+	return func(t *testing.T) {
+		isStatus := j.Status
+		expectedStatus := "error"
+		if isStatus != expectedStatus {
+			t.Errorf("unexpected jsend.Status; expected: %q; is: %q", expectedStatus, isStatus)
+		}
 
-	expectedCode := http.StatusBadGateway
-	isCode := j.Code
-	if isCode != expectedCode {
-		t.Errorf("unexpected jsend.Code; expected: %d; is: %d", expectedCode, isCode)
-	}
+		expectedCode := http.StatusBadGateway
+		isCode := j.Code
+		if isCode != expectedCode {
+			t.Errorf("unexpected jsend.Code; expected: %d; is: %d", expectedCode, isCode)
+		}
 
-	expectedSuffix := messageSuffixRemoteError(c)
-	is := j.Message
-	if !strings.HasSuffix(is, expectedSuffix) {
-		t.Errorf("unexpected jsend.Message; expected: '...%s'; is: %s", expectedSuffix, is)
+		expectedSuffix := messageSuffixRemoteError(c)
+		is := j.Message
+		if !strings.HasSuffix(is, expectedSuffix) {
+			t.Errorf("unexpected jsend.Message; expected: '...%s'; is: %s", expectedSuffix, is)
+		}
 	}
 }
