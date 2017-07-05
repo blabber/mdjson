@@ -158,7 +158,7 @@ func TestGetEvents(t *testing.T) {
 
 		if isTestEvent != expected[i] {
 			t.Errorf("Unexpected event %d; is \"%v\"; expected \"%v\"",
-				i, isEvent, isTestEvent)
+				i, isTestEvent, expected[i])
 		}
 	}
 
