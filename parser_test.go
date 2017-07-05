@@ -130,18 +130,19 @@ func TestGetStages(t *testing.T) {
 }
 
 type testEvent struct {
+	Time  string
 	Label string
 	URL   string
 }
 
 func TestGetEvents(t *testing.T) {
 	expected := []testEvent{
-		{strings.Title("Tytus"), "http://www.metaldays.net/b613/tytus"},
-		{strings.Title("Turbowarrior of steel"), "http://www.metaldays.net/b612/turbowarrior-of-steel"},
-		{strings.Title("Amon Amarth"), "http://www.metaldays.net/b526/amon-amarth"},
-		{strings.Title("Katatonia"), "http://www.metaldays.net/b531/katatonia"},
-		{strings.Title("Kadavar"), "http://www.metaldays.net/b539/kadavar"},
-		{strings.Title("Doro"), "http://www.metaldays.net/b529/doro"},
+		{"-", strings.Title("Tytus"), "http://www.metaldays.net/b613/tytus"},
+		{"-", strings.Title("Turbowarrior of steel"), "http://www.metaldays.net/b612/turbowarrior-of-steel"},
+		{"22:30 - 00:00", strings.Title("Amon Amarth"), "http://www.metaldays.net/b526/amon-amarth"},
+		{"20:45 - 22:00", strings.Title("Katatonia"), "http://www.metaldays.net/b531/katatonia"},
+		{"00:10 - 01:20", strings.Title("Kadavar"), "http://www.metaldays.net/b539/kadavar"},
+		{"22:30 - 00:00", strings.Title("Doro"), "http://www.metaldays.net/b529/doro"},
 	}
 
 	is, err := getEvents(sampleRootNode)
@@ -154,7 +155,7 @@ func TestGetEvents(t *testing.T) {
 			break
 		}
 
-		isTestEvent := testEvent{isEvent.Label, isEvent.URL}
+		isTestEvent := testEvent{isEvent.Time, isEvent.Label, isEvent.URL}
 
 		if isTestEvent != expected[i] {
 			t.Errorf("Unexpected event %d; is \"%v\"; expected \"%v\"",
@@ -178,10 +179,12 @@ func TestParseRunningOrder(t *testing.T) {
 						strings.Title("Newforces stage"),
 						[]*Event{
 							{
+								"-",
 								strings.Title("Tytus"),
 								"http://www.metaldays.net/b613/tytus",
 							},
 							{
+								"-",
 								strings.Title("Turbowarrior of steel"),
 								"http://www.metaldays.net/b612/turbowarrior-of-steel",
 							},
@@ -198,10 +201,12 @@ func TestParseRunningOrder(t *testing.T) {
 						strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
 						[]*Event{
 							{
+								"22:30 - 00:00",
 								strings.Title("Amon Amarth"),
 								"http://www.metaldays.net/b526/amon-amarth",
 							},
 							{
+								"20:45 - 22:00",
 								strings.Title("Katatonia"),
 								"http://www.metaldays.net/b531/katatonia",
 							},
@@ -212,6 +217,7 @@ func TestParseRunningOrder(t *testing.T) {
 						strings.Title("Boško Bursać Stage"),
 						[]*Event{
 							{
+								"00:10 - 01:20",
 								strings.Title("Kadavar"),
 								"http://www.metaldays.net/b539/kadavar",
 							},
@@ -228,6 +234,7 @@ func TestParseRunningOrder(t *testing.T) {
 						strings.Title("Ian Fraser “Lemmy” Kilmister stage"),
 						[]*Event{
 							{
+								"22:30 - 00:00",
 								strings.Title("Doro"),
 								"http://www.metaldays.net/b529/doro",
 							},

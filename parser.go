@@ -136,6 +136,9 @@ func getStagesRecursive(n *html.Node, s chan<- *Stage) {
 
 // A Event represents an event.
 type Event struct {
+	// Time contains the time of the event
+	Time string `json:"time"`
+
 	// Label contains the name of the event, normally the name of a band.
 	Label string `json:"label"`
 
@@ -174,17 +177,30 @@ func getEvents(n *html.Node) ([]*Event, error) {
 func getEventsRecursive(n *html.Node, e chan<- *Event) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "band_lineup") {
 		nn := newNode(n)
-		namenode := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild()
-		if namenode == nil {
+
+		timenode := nn.firstNonEmptyChild().nextNonEmptySibling()
+		namenode := nn.firstNonEmptyChild().nextNonEmptySibling().nextNonEmptySibling()
+
+		// At the moment the DOM of the Newforces stage is different.
+		if timenode == nil || !hasAttributeValue(timenode.Attr, "class", "time") {
+			timenode = nn.firstNonEmptyChild()
+			namenode = nn.firstNonEmptyChild().nextNonEmptySibling()
+		}
+
+		timenode = timenode.firstNonEmptyChild()
+		namenode = namenode.firstNonEmptyChild()
+
+		if namenode == nil || timenode == nil {
 			panic("Unable to parse running order structure (event).")
 		}
 
+		time := strings.TrimSpace(timenode.Data)
 		name := strings.TrimSpace(namenode.Data)
 		name = strings.Title(name)
 
 		url := getAttributeValue(n.Attr, "href")
 
-		e <- &Event{name, url}
+		e <- &Event{time, name, url}
 		return
 	}
 
