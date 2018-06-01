@@ -196,6 +196,7 @@ func getEventsRecursive(n *html.Node, e chan<- *Event) {
 
 		time := strings.TrimSpace(timenode.Data)
 		name := strings.TrimSpace(namenode.Data)
+		name = strings.ToLower(name)
 		name = strings.Title(name)
 
 		url := getAttributeValue(n.Attr, "href")
