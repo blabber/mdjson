@@ -4,6 +4,12 @@ mdjson
 
 Scrapes the MetalDays website and exposes the latest Running Order as JSON.
 
-This is work in process and is not usable in the current state as the MetalDays
-running order is still in flux and the parser for the running order has to
-adapt accordingly.
+## Frontends
+
+* [mdjson-web](https://github.com/blabber/mdjson-web): A simple web frontend
+
+## Generated data
+
+There is a [gist](https://gist.githubusercontent.com/blabber/babc4803141b0ec13fd613cc84eae074/raw)
+containing a jsonified running order, that is updated every 30 minutes.
+
