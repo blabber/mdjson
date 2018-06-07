@@ -7,6 +7,7 @@ Scrapes the MetalDays website and exposes the latest Running Order as JSON.
 ## Frontends
 
 * [mdjson-web](https://github.com/blabber/mdjson-web): A simple web frontend
+* [harbour-metaldays](https://github.com/blabber/harbour-metaldays): A native Saiilfish OS app
 
 ## Generated data
 
