@@ -19,7 +19,7 @@ type TimeStamps struct {
 }
 
 // addTimeStampsToDay generates TimeStamps for the Day d and adds them to d.
-// d.Label has to be filled correctly, befor calling this function.
+// d.Label has to be filled correctly, before calling this function.
 func addTimeStampsToDay(d *Day) error {
 	parsed, e := time.ParseInLocation("Monday 02.01.", d.Label, time.Local)
 	if e != nil {
@@ -37,7 +37,7 @@ func addTimeStampsToDay(d *Day) error {
 // addTimeStampsToEvent generates TimeStamps for Event e and adds them to e.
 // The time.Time d that denotes the start for the day of the event will be used
 // to generate the timestamps for the event.
-// e.Time has to be filled correctly, befor calling this function.
+// e.Time has to be filled correctly, before calling this function.
 func addTimeStampsToEvent(e *Event, d time.Time) error {
 	if strings.TrimSpace(e.Time) == "-" {
 		return nil
