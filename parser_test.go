@@ -7,9 +7,11 @@
 package mdjson
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -64,17 +66,24 @@ func TestGetStagesEmpty(t *testing.T) {
 }
 
 func TestGetEventsEmpty(t *testing.T) {
-	_, err := getEvents(failRootNode)
+	_, err := getEvents(failRootNode, time.Date(2017, 07, 23, 0, 0, 0, 0, timezone))
 	if err == nil {
 		t.Error("getEvents(nil) returns no error")
 	}
 }
 
+type testDay struct {
+	Label      string
+	TimeStamps *TimeStamps
+}
+
 func TestGetDays(t *testing.T) {
-	expected := []string{
-		"Saturday 22.07.",
-		"Tuesday 25.07.",
-		"Wednesday 26.07.",
+	Year = 2017 // global in timestamps.go
+
+	expected := []testDay{
+		{"Saturday 22.07.", &TimeStamps{1500674400, 1500760800}},
+		{"Tuesday 25.07.", &TimeStamps{1500933600, 1501020000}},
+		{"Wednesday 26.07.", &TimeStamps{1501020000, 1501106400}},
 	}
 
 	is, err := getDays(sampleRootNode)
@@ -87,15 +96,17 @@ func TestGetDays(t *testing.T) {
 			break
 		}
 
-		if isLabel := isDay.Label; isLabel != expected[i] {
+		if isDay.Label != expected[i].Label {
 			t.Errorf("Unexpected label for day %d; is \"%s\"; expected \"%s\"",
-				i, isLabel, expected[i])
+				i, isDay.Label, expected[i].Label)
 		}
+
+		t.Run(fmt.Sprintf("check timestamps for day %d", i),
+			compareTimeStampsPointers(isDay.TimeStamps, expected[i].TimeStamps))
 	}
 
 	if len(is) != len(expected) {
-		t.Errorf("unexpected number of days found; is %d; expected %d",
-			len(is), len(expected))
+		t.Errorf("unexpected number of days found; is %d; expected %d", len(is), len(expected))
 	}
 }
 
@@ -130,22 +141,55 @@ func TestGetStages(t *testing.T) {
 }
 
 type testEvent struct {
-	Time  string
-	Label string
-	URL   string
+	Time       string
+	TimeStamps *TimeStamps
+	Label      string
+	URL        string
 }
 
 func TestGetEvents(t *testing.T) {
+	day := time.Date(2017, 07, 22, 0, 0, 0, 0, timezone)
+
 	expected := []testEvent{
-		{"-", strings.Title("Tytus"), "http://www.metaldays.net/b613/tytus"},
-		{"-", strings.Title("Turbowarrior of steel"), "http://www.metaldays.net/b612/turbowarrior-of-steel"},
-		{"22:30 - 00:00", strings.Title("Amon Amarth"), "http://www.metaldays.net/b526/amon-amarth"},
-		{"20:45 - 22:00", strings.Title("Katatonia"), "http://www.metaldays.net/b531/katatonia"},
-		{"00:10 - 01:20", strings.Title("Kadavar"), "http://www.metaldays.net/b539/kadavar"},
-		{"22:30 - 00:00", strings.Title("Doro"), "http://www.metaldays.net/b529/doro"},
+		{
+			"-",
+			nil,
+			strings.Title("Tytus"),
+			"http://www.metaldays.net/b613/tytus",
+		},
+		{
+			"-",
+			nil,
+			strings.Title("Turbowarrior of steel"),
+			"http://www.metaldays.net/b612/turbowarrior-of-steel",
+		},
+		{
+			"22:30 - 00:00",
+			&TimeStamps{1500755400, 1500760800},
+			strings.Title("Amon Amarth"),
+			"http://www.metaldays.net/b526/amon-amarth",
+		},
+		{
+			"20:45 - 22:00",
+			&TimeStamps{1500749100, 1500753600},
+			strings.Title("Katatonia"),
+			"http://www.metaldays.net/b531/katatonia",
+		},
+		{
+			"00:10 - 01:20",
+			&TimeStamps{1500761400, 1500765600},
+			strings.Title("Kadavar"),
+			"http://www.metaldays.net/b539/kadavar",
+		},
+		{
+			"22:30 - 00:00",
+			&TimeStamps{1500755400, 1500760800},
+			strings.Title("Doro"),
+			"http://www.metaldays.net/b529/doro",
+		},
 	}
 
-	is, err := getEvents(sampleRootNode)
+	is, err := getEvents(sampleRootNode, day)
 	if err != nil {
 		t.Fatalf("getEvents returned an unexpected error: %v", err)
 	}
@@ -155,11 +199,22 @@ func TestGetEvents(t *testing.T) {
 			break
 		}
 
-		isTestEvent := testEvent{isEvent.Time, isEvent.Label, isEvent.URL}
+		if isEvent.Time != expected[i].Time {
+			t.Errorf("Unexpected time for event %d; is \"%s\"; expected \"%s\"",
+				i, isEvent.Time, expected[i].Time)
+		}
 
-		if isTestEvent != expected[i] {
-			t.Errorf("Unexpected event %d; is \"%v\"; expected \"%v\"",
-				i, isTestEvent, expected[i])
+		t.Run(fmt.Sprintf("check timestamps for event %d", i),
+			compareTimeStampsPointers(isEvent.TimeStamps, expected[i].TimeStamps))
+
+		if isEvent.Label != expected[i].Label {
+			t.Errorf("Unexpected label for event %d; is \"%s\"; expected \"%s\"",
+				i, isEvent.Label, expected[i].Label)
+		}
+
+		if isEvent.URL != expected[i].URL {
+			t.Errorf("Unexpected URL for event %d; is \"%s\"; expected \"%s\"",
+				i, isEvent.URL, expected[i].URL)
 		}
 	}
 
@@ -170,6 +225,8 @@ func TestGetEvents(t *testing.T) {
 }
 
 func TestParseRunningOrder(t *testing.T) {
+	Year = 2016 // global in timestamps.go
+
 	expected := RunningOrder{
 		[]*Day{
 			{
@@ -180,11 +237,13 @@ func TestParseRunningOrder(t *testing.T) {
 						[]*Event{
 							{
 								"-",
+								nil,
 								strings.Title("Tytus"),
 								"http://www.metaldays.net/b613/tytus",
 							},
 							{
 								"-",
+								nil,
 								strings.Title("Turbowarrior of steel"),
 								"http://www.metaldays.net/b612/turbowarrior-of-steel",
 							},
@@ -192,6 +251,7 @@ func TestParseRunningOrder(t *testing.T) {
 						nil,
 					},
 				},
+				&TimeStamps{1469138400, 1469224800},
 				nil,
 			},
 			{
@@ -202,11 +262,13 @@ func TestParseRunningOrder(t *testing.T) {
 						[]*Event{
 							{
 								"22:30 - 00:00",
+								&TimeStamps{1469478600, 1469484000},
 								strings.Title("Amon Amarth"),
 								"http://www.metaldays.net/b526/amon-amarth",
 							},
 							{
 								"20:45 - 22:00",
+								&TimeStamps{1469472300, 1469476800},
 								strings.Title("Katatonia"),
 								"http://www.metaldays.net/b531/katatonia",
 							},
@@ -218,6 +280,7 @@ func TestParseRunningOrder(t *testing.T) {
 						[]*Event{
 							{
 								"00:10 - 01:20",
+								&TimeStamps{1469484600, 1469488800},
 								strings.Title("Kadavar"),
 								"http://www.metaldays.net/b539/kadavar",
 							},
@@ -225,6 +288,7 @@ func TestParseRunningOrder(t *testing.T) {
 						nil,
 					},
 				},
+				&TimeStamps{1469397600, 1469484000},
 				nil,
 			},
 			{
@@ -235,6 +299,7 @@ func TestParseRunningOrder(t *testing.T) {
 						[]*Event{
 							{
 								"22:30 - 00:00",
+								&TimeStamps{1469565000, 1469570400},
 								strings.Title("Doro"),
 								"http://www.metaldays.net/b529/doro",
 							},
@@ -242,6 +307,7 @@ func TestParseRunningOrder(t *testing.T) {
 						nil,
 					},
 				},
+				&TimeStamps{1469484000, 1469570400},
 				nil,
 			},
 		},
@@ -267,10 +333,13 @@ func TestParseRunningOrder(t *testing.T) {
 		}
 
 		if day.Label != expected.Days[d].Label {
-			t.Errorf("unexpected day %d; is \"%s\"; expected \"%s\"",
+			t.Errorf("unexpected label for day %d; is \"%s\"; expected \"%s\"",
 				d, day.Label, expected.Days[d].Label)
 			continue
 		}
+
+		t.Run(fmt.Sprintf("check timestamps for day %d", d),
+			compareTimeStampsPointers(day.TimeStamps, expected.Days[d].TimeStamps))
 
 		if len(day.Stages) != len(expected.Days[d].Stages) {
 			t.Errorf("unexpected number of stages for day %d; is %d; expected %d",
@@ -301,6 +370,10 @@ func TestParseRunningOrder(t *testing.T) {
 						e, event.Label,
 						expected.Days[d].Stages[s].Events[e].Label)
 				}
+
+				t.Run(fmt.Sprintf("check timestamps for event %d %d %d", d, s, e),
+					compareTimeStampsPointers(event.TimeStamps,
+						expected.Days[d].Stages[s].Events[e].TimeStamps))
 
 				if event.URL != expected.Days[d].Stages[s].Events[e].URL {
 					t.Errorf("unexpected url for event %d; is \"%s\"; expected \"%s\"",

@@ -18,6 +18,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/blabber/mdjson"
 )
 
 const (
@@ -71,6 +73,8 @@ var dataTests = []struct {
 }
 
 func TestDumpData(t *testing.T) {
+	mdjson.Year = 2018
+
 	for _, dt := range dataTests {
 		t.Run(dt.name, func(t *testing.T) {
 			f, err := os.Open(dt.inputData)

@@ -9,6 +9,7 @@ package mdjson
 import (
 	"io"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -20,6 +21,9 @@ type Day struct {
 
 	// Stages contains the stages that are active at this day.
 	Stages []*Stage `json:"stages"`
+
+	// TimeStamps contains the timestamps for the start and the end of the day.
+	TimeStamps *TimeStamps `json:"timestamps"`
 
 	// node is the *html.Node associated with the day. It is intended to be
 	// used as input to getStages.
@@ -65,7 +69,14 @@ func getDaysRecursive(n *html.Node, d chan<- *Day) {
 		date := strings.Replace(datenode.Data, ". ", ".", -1)
 		date = strings.TrimSpace(date)
 
-		d <- &Day{date, []*Stage{}, n}
+		day := &Day{date, []*Stage{}, nil, n}
+
+		e := addTimeStampsToDay(day)
+		if e != nil {
+			panic(e)
+		}
+
+		d <- day
 		return
 	}
 
@@ -139,6 +150,9 @@ type Event struct {
 	// Time contains the time of the event
 	Time string `json:"time"`
 
+	// TimeStamps contains the timestamps for the start and the end of the event.
+	TimeStamps *TimeStamps `json:"timestamps"`
+
 	// Label contains the name of the event, normally the name of a band.
 	Label string `json:"label"`
 
@@ -148,15 +162,18 @@ type Event struct {
 }
 
 // getEvents walks the running order starting at n and returns a slice of found
-// Events. In order to get the events for one stage, n should be the node
-// associated with a Stage.
-func getEvents(n *html.Node) ([]*Event, error) {
+// Events.
+// The time.Time d that denotes the start for the day of the event will be used
+// to generate the timestamps for the event.
+// In order to get the events for one stage, n should be the node associated
+// with a Stage.
+func getEvents(n *html.Node, d time.Time) ([]*Event, error) {
 	ev := make(chan *Event)
 	e := make(chan error)
 	done := make(chan bool)
 
 	go protect(e, done, func() {
-		getEventsRecursive(n, ev)
+		getEventsRecursive(n, d, ev)
 	})
 
 	events := []*Event{}
@@ -173,8 +190,11 @@ func getEvents(n *html.Node) ([]*Event, error) {
 }
 
 // getEventsRecursive is used by GetEvents (and by itself) to walk the running
-// order recursively starting at n. Any Event found is published via e.
-func getEventsRecursive(n *html.Node, e chan<- *Event) {
+// order recursively starting at n.
+// The time.Time d that denotes the start for the day of the event will be used
+// to generate the timestamps for the even.
+// Any Event found is published via e.
+func getEventsRecursive(n *html.Node, d time.Time, e chan<- *Event) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "band_lineup") {
 		nn := newNode(n)
 
@@ -201,12 +221,18 @@ func getEventsRecursive(n *html.Node, e chan<- *Event) {
 
 		url := getAttributeValue(n.Attr, "href")
 
-		e <- &Event{time, name, url}
+		event := &Event{time, nil, name, url}
+		err := addTimeStampsToEvent(event, d)
+		if err != nil {
+			panic(err)
+		}
+
+		e <- event
 		return
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		getEventsRecursive(c, e)
+		getEventsRecursive(c, d, e)
 	}
 }
 
@@ -236,8 +262,9 @@ func ParseRunningOrder(r io.Reader) (*RunningOrder, error) {
 			return nil, err
 		}
 
+		dd := time.Unix(d.TimeStamps.Start, 0).In(timezone)
 		for _, s := range d.Stages {
-			s.Events, err = getEvents(s.node)
+			s.Events, err = getEvents(s.node, dd)
 			if err != nil {
 				return nil, err
 			}
