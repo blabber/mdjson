@@ -11,11 +11,16 @@ import (
 	"time"
 )
 
-var (
-	Year     int
-	timezone *time.Location
-)
+// Year is the year that will be used as the year of timestamps. By default
+// this is the current year, but it can be overridden.
+var Year int
 
+// timezone is the time.Location where the festival happens.
+var timezone *time.Location
+
+// init initializes the global context of the timestamp related functions:
+// * it loads the time.Location defining the timezone
+// * it sets the current year as the global variable Year
 func init() {
 	var err error
 	timezone, err = time.LoadLocation("Europe/Ljubljana")
@@ -34,7 +39,8 @@ type TimeStamps struct {
 }
 
 // addTimeStampsToDay generates TimeStamps for the Day d and adds them to d.
-// d.Label has to be filled correctly, before calling this function.
+// d.Label has to be filled correctly, before calling this function. The global
+// Year will be used as the year of the timestamps.
 func addTimeStampsToDay(d *Day) error {
 	parsed, e := time.ParseInLocation("Monday 02.01.", d.Label, timezone)
 	if e != nil {

@@ -72,18 +72,6 @@ func TestGetEventsEmpty(t *testing.T) {
 	}
 }
 
-func compareTimeStampsPointers(is, expected *TimeStamps) func(*testing.T) {
-	return func(t *testing.T) {
-		if is != nil && expected != nil && *is != *expected {
-			t.Errorf("Unexpected timestamps; is \"%v\"; expected \"%v\"", *is, *expected)
-		}
-
-		if (is == nil && expected != nil) || (is != nil && expected == nil) {
-			t.Errorf("Unexpected timestamps; is \"%p\"; expected \"%p\"", is, expected)
-		}
-	}
-}
-
 type testDay struct {
 	Label      string
 	TimeStamps *TimeStamps
