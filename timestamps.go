@@ -11,6 +11,21 @@ import (
 	"time"
 )
 
+var (
+	Year     int
+	timezone *time.Location
+)
+
+func init() {
+	var err error
+	timezone, err = time.LoadLocation("Europe/Ljubljana")
+	if err != nil {
+		panic(err)
+	}
+
+	Year = time.Now().Year()
+}
+
 // A TimeStamps contains two unix timestamps, that denote the start and end of
 // a time span.
 type TimeStamps struct {
@@ -21,12 +36,12 @@ type TimeStamps struct {
 // addTimeStampsToDay generates TimeStamps for the Day d and adds them to d.
 // d.Label has to be filled correctly, before calling this function.
 func addTimeStampsToDay(d *Day) error {
-	parsed, e := time.ParseInLocation("Monday 02.01.", d.Label, time.Local)
+	parsed, e := time.ParseInLocation("Monday 02.01.", d.Label, timezone)
 	if e != nil {
 		return e
 	}
 
-	start := time.Date(time.Now().Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.Local)
+	start := time.Date(Year, parsed.Month(), parsed.Day(), 0, 0, 0, 0, timezone)
 	end := start.AddDate(0, 0, 1)
 
 	d.TimeStamps = &TimeStamps{start.Unix(), end.Unix()}
@@ -44,12 +59,12 @@ func addTimeStampsToEvent(e *Event, d time.Time) error {
 	}
 
 	pf := func(s string, d time.Time) (time.Time, error) {
-		p, err := time.ParseInLocation("15:04", s, time.Local)
+		p, err := time.ParseInLocation("15:04", s, timezone)
 		if err != nil {
 			return time.Now(), err
 		}
 
-		n := time.Date(d.Year(), d.Month(), d.Day(), p.Hour(), p.Minute(), 0, 0, time.Local)
+		n := time.Date(d.Year(), d.Month(), d.Day(), p.Hour(), p.Minute(), 0, 0, timezone)
 		if n.Hour() < 10 {
 			n = n.AddDate(0, 0, 1)
 		}

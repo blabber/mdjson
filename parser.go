@@ -262,7 +262,7 @@ func ParseRunningOrder(r io.Reader) (*RunningOrder, error) {
 			return nil, err
 		}
 
-		dd := time.Unix(d.TimeStamps.Start, 0).In(time.Local)
+		dd := time.Unix(d.TimeStamps.Start, 0).In(timezone)
 		for _, s := range d.Stages {
 			s.Events, err = getEvents(s.node, dd)
 			if err != nil {
