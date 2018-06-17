@@ -31,14 +31,14 @@ type Day struct {
 }
 
 // getDays walks the running order starting at n and returns a slice of found
-// Days.
-func getDays(n *html.Node) ([]*Day, error) {
+// Days. year should be the year the days belong to.
+func getDays(year int, n *html.Node) ([]*Day, error) {
 	d := make(chan *Day)
 	e := make(chan error)
 	done := make(chan bool)
 
 	go protect(e, done, func() {
-		getDaysRecursive(n, d)
+		getDaysRecursive(year, n, d)
 	})
 
 	days := []*Day{}
@@ -55,8 +55,9 @@ func getDays(n *html.Node) ([]*Day, error) {
 }
 
 // getDaysRecursive is used by GetDays (and by itself) to walk the running
-// order recursively starting at n. Any Day found is published via d.
-func getDaysRecursive(n *html.Node, d chan<- *Day) {
+// order recursively starting at n. Any Day found is published via d. year
+// should be the year the days belong to.
+func getDaysRecursive(year int, n *html.Node, d chan<- *Day) {
 	if n.Type == html.ElementNode && hasAttributeValue(n.Attr, "class", "lineup_day") {
 		nn := newNode(n)
 		datenode := nn.firstNonEmptyChild().nextNonEmptySibling().firstNonEmptyChild().firstNonEmptyChild()
@@ -71,7 +72,7 @@ func getDaysRecursive(n *html.Node, d chan<- *Day) {
 
 		day := &Day{date, []*Stage{}, nil, n}
 
-		e := addTimeStampsToDay(day)
+		e := addTimeStampsToDay(year, day)
 		if e != nil {
 			panic(e)
 		}
@@ -81,7 +82,7 @@ func getDaysRecursive(n *html.Node, d chan<- *Day) {
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		getDaysRecursive(c, d)
+		getDaysRecursive(year, c, d)
 	}
 }
 
@@ -242,8 +243,9 @@ type RunningOrder struct {
 }
 
 // ParseRunningOrder parses the HTML running order in r and returns a fully
-// populated RunningOrder.
-func ParseRunningOrder(r io.Reader) (*RunningOrder, error) {
+// populated RunningOrder. year is the year in which the festival takes place;
+// generally this should be time.Now().Year().
+func ParseRunningOrder(year int, r io.Reader) (*RunningOrder, error) {
 	n, err := html.Parse(r)
 	if err != nil {
 		return nil, err
@@ -251,7 +253,7 @@ func ParseRunningOrder(r io.Reader) (*RunningOrder, error) {
 
 	ro := &RunningOrder{}
 
-	ro.Days, err = getDays(n)
+	ro.Days, err = getDays(year, n)
 	if err != nil {
 		return nil, err
 	}

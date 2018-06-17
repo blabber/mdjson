@@ -52,7 +52,7 @@ func htmlParseFile(s string) (*html.Node, error) {
 }
 
 func TestGetDaysEmpty(t *testing.T) {
-	_, err := getDays(failRootNode)
+	_, err := getDays(2016, failRootNode)
 	if err == nil {
 		t.Error("getDays(nil) returns no error")
 	}
@@ -78,7 +78,7 @@ type testDay struct {
 }
 
 func TestGetDays(t *testing.T) {
-	Year = 2017 // global in timestamps.go
+	year := 2017
 
 	expected := []testDay{
 		{"Saturday 22.07.", &TimeStamps{1500674400, 1500760800}},
@@ -86,7 +86,7 @@ func TestGetDays(t *testing.T) {
 		{"Wednesday 26.07.", &TimeStamps{1501020000, 1501106400}},
 	}
 
-	is, err := getDays(sampleRootNode)
+	is, err := getDays(year, sampleRootNode)
 	if err != nil {
 		t.Fatalf("getDays returned an unexpected error: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestGetEvents(t *testing.T) {
 }
 
 func TestParseRunningOrder(t *testing.T) {
-	Year = 2016 // global in timestamps.go
+	year := 2016
 
 	expected := RunningOrder{
 		[]*Day{
@@ -318,7 +318,7 @@ func TestParseRunningOrder(t *testing.T) {
 		panic(err)
 	}
 
-	ro, err := ParseRunningOrder(f)
+	ro, err := ParseRunningOrder(year, f)
 	if err != nil {
 		t.Fatalf("ParseRunningOrder returns unexpected error: %v", err)
 	}

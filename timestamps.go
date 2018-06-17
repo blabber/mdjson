@@ -11,24 +11,16 @@ import (
 	"time"
 )
 
-// Year is the year that will be used as the year of timestamps. By default
-// this is the current year, but it can be overridden.
-var Year int
-
 // timezone is the time.Location where the festival happens.
 var timezone *time.Location
 
-// init initializes the global context of the timestamp related functions:
-// * it loads the time.Location defining the timezone
-// * it sets the current year as the global variable Year
+// init initializes the global context of the timestamp related functions.
 func init() {
 	var err error
 	timezone, err = time.LoadLocation("Europe/Ljubljana")
 	if err != nil {
 		panic(err)
 	}
-
-	Year = time.Now().Year()
 }
 
 // A TimeStamps contains two unix timestamps, that denote the start and end of
@@ -39,15 +31,15 @@ type TimeStamps struct {
 }
 
 // addTimeStampsToDay generates TimeStamps for the Day d and adds them to d.
-// d.Label has to be filled correctly, before calling this function. The global
-// Year will be used as the year of the timestamps.
-func addTimeStampsToDay(d *Day) error {
+// d.Label has to be filled correctly, before calling this function. year will
+// be used as the year component of timestamps.
+func addTimeStampsToDay(year int, d *Day) error {
 	parsed, e := time.ParseInLocation("Monday 02.01.", d.Label, timezone)
 	if e != nil {
 		return e
 	}
 
-	start := time.Date(Year, parsed.Month(), parsed.Day(), 0, 0, 0, 0, timezone)
+	start := time.Date(year, parsed.Month(), parsed.Day(), 0, 0, 0, 0, timezone)
 	end := start.AddDate(0, 0, 1)
 
 	d.TimeStamps = &TimeStamps{start.Unix(), end.Unix()}
@@ -59,6 +51,8 @@ func addTimeStampsToDay(d *Day) error {
 // The time.Time d that denotes the start for the day of the event will be used
 // to generate the timestamps for the event.
 // e.Time has to be filled correctly, before calling this function.
+// If the time component of a time stamp is smaller than 10:00, it is assumed,
+// that the event belongs to the next day.
 func addTimeStampsToEvent(e *Event, d time.Time) error {
 	if strings.TrimSpace(e.Time) == "-" {
 		return nil

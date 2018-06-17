@@ -33,7 +33,7 @@ func protect(err chan<- error, done chan<- bool, f func()) {
 }
 
 // hasAttributes returns true if the html.Attributes in a contain an attribute
-// with key k and a value of v.  If the attribute contains multiple value it is
+// with key k and a value of v. If the attribute contains multiple value it is
 // sufficient if is contained in the values.
 func hasAttributeValue(a []html.Attribute, k string, v string) bool {
 	vs := getAttributeValue(a, k)

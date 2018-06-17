@@ -18,8 +18,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/blabber/mdjson"
 )
 
 const (
@@ -31,6 +29,8 @@ const (
 
 	messagePrefixParseError = "Unable to parse running order structure "
 )
+
+var year = 2018
 
 func messageSuffixRemoteError(c int) string {
 	return fmt.Sprintf(" returned \"%d %s\"", c, http.StatusText(c))
@@ -73,8 +73,6 @@ var dataTests = []struct {
 }
 
 func TestDumpData(t *testing.T) {
-	mdjson.Year = 2018
-
 	for _, dt := range dataTests {
 		t.Run(dt.name, func(t *testing.T) {
 			f, err := os.Open(dt.inputData)
@@ -87,7 +85,7 @@ func TestDumpData(t *testing.T) {
 			defer s.Close()
 
 			var b bytes.Buffer
-			err = dump(s.URL, &b)
+			err = dump(s.URL, &b, flags{year: &year})
 			if err != nil {
 				if dt.validData {
 					t.Fatal(err)
@@ -132,7 +130,7 @@ func TestServeData(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			h := runningorderHandler(s.URL, flags{cors: &dt.cors})
+			h := runningorderHandler(s.URL, flags{cors: &dt.cors, year: &year})
 			h(rw, rr)
 
 			isACAOHeader := rw.HeaderMap.Get("Access-Control-Allow-Origin")
@@ -189,7 +187,7 @@ func TestDumpRemoteError(t *testing.T) {
 			defer s.Close()
 
 			var b bytes.Buffer
-			err := dump(s.URL, &b)
+			err := dump(s.URL, &b, flags{year: &year})
 			if err != nil {
 				expectedSuffix := messageSuffixRemoteError(ret.code)
 				is := err.Error()

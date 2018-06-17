@@ -35,6 +35,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/blabber/mdjson"
 )
@@ -42,6 +43,7 @@ import (
 type flags struct {
 	http *string
 	cors *bool
+	year *int
 }
 
 func main() {
@@ -52,6 +54,7 @@ func main() {
 	var flags = flags{
 		http: flag.String("http", "", "HTTP service address"),
 		cors: flag.Bool("cors", false, "add wildcard Access-Control-Allow-Origin header to HTTP replies"),
+		year: flag.Int("year", time.Now().Year(), "the year the festival takes place"),
 	}
 
 	flag.Parse()
@@ -60,7 +63,7 @@ func main() {
 		log.Fatal(serve(runningOrderURL, flags))
 	}
 
-	err := dump(runningOrderURL, os.Stdout)
+	err := dump(runningOrderURL, os.Stdout, flags)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -141,7 +144,7 @@ func runningorderHandler(u string, flags flags) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
 
-		j, err := parseRunningOrder(u)
+		j, err := parseRunningOrder(u, flags)
 		if err != nil {
 			log.Printf("parseRunningorder: %v", err)
 			w.WriteHeader(j.Code)
@@ -156,9 +159,10 @@ func runningorderHandler(u string, flags flags) http.HandlerFunc {
 }
 
 // dump parses the latest running order found at URL u and writes a JSON
-// representation to w.
-func dump(u string, w io.Writer) error {
-	j, parseErr := parseRunningOrder(u)
+// representation to w. flags is needed for the year the festival takes place
+// in.
+func dump(u string, w io.Writer, flags flags) error {
+	j, parseErr := parseRunningOrder(u, flags)
 
 	enc := json.NewEncoder(w)
 	err := enc.Encode(j)
@@ -174,11 +178,12 @@ func dump(u string, w io.Writer) error {
 }
 
 // parseRunningOrder parses the latest running order found at URL u and returns
-// a jsend representation.
+// a jsend representation. flags is needed for the year the festival takes
+// place in.
 //
 // If something goes wrong the error is returned as error value and additionally
 // encoded in the JSend structure.
-func parseRunningOrder(u string) (jsend, error) {
+func parseRunningOrder(u string, flags flags) (jsend, error) {
 	resp, err := http.Get(u)
 	if err != nil {
 		return newJsendError(err, http.StatusBadGateway), err
@@ -190,7 +195,7 @@ func parseRunningOrder(u string) (jsend, error) {
 		return newJsendError(err, http.StatusBadGateway), err
 	}
 
-	ro, err := mdjson.ParseRunningOrder(resp.Body)
+	ro, err := mdjson.ParseRunningOrder(*flags.year, resp.Body)
 	if err != nil {
 		return newJsendError(err, http.StatusInternalServerError), err
 	}

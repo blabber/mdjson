@@ -36,8 +36,7 @@ func TestAddTimeStampsToDays(t *testing.T) {
 
 	for _, test := range ts {
 		t.Run(fmt.Sprintf("%s %d", test.day.Label, test.year), func(t *testing.T) {
-			Year = test.year // global in timestamps.go
-			err := addTimeStampsToDay(test.day)
+			err := addTimeStampsToDay(test.year, test.day)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
