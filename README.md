@@ -9,6 +9,10 @@ Scrapes the MetalDays website and exposes the latest Running Order as JSON.
 * [mdjson-web](https://github.com/blabber/mdjson-web): A simple web frontend
 * [harbour-metaldays](https://github.com/blabber/harbour-metaldays): A native Sailfish OS app
 
+## Tools
+
+* [mdjson-latex](https://github.com/blabber/mdjson-latex): Creates a printable Running Order
+
 ## Generated data
 
 There is a [gist](https://gist.githubusercontent.com/blabber/babc4803141b0ec13fd613cc84eae074/raw)
